@@ -1,7 +1,7 @@
 'use strict';
 
-import { join } from 'path';
-// import { TaskManager } from '@itharbors/structures';
+import { join } from 'node:path';
+import { writeFileSync } from 'node:fs';
 
 let workflowOption: workflowConfig | undefined = undefined;
 let workflowCacheJSON: { [task: string]: { [key: string]: boolean | string | number | undefined } } = {};
@@ -45,7 +45,7 @@ export abstract class Task {
 
     abstract getName(): string;
     abstract getTitle(): string;
-    abstract execute(config: any): Promise<TaskState> | TaskState;
+    abstract execute(workspace: string, config: any): Promise<TaskState> | TaskState;
 }
 
 /**
@@ -85,17 +85,7 @@ export async function executeTask(taskNameList: string[]) {
         [taskName: string]: TaskState[],
     } = {};
 
-    // 收集配置
-    const taskConfigList: any[] = [];
-    workflowOption.workspaces.forEach((dir) => {
-        try {
-            const configFile = join(dir, workflowOption!.entry);
-            taskConfigList.push(require(configFile));
-        } catch(error) {
-            console.error(error);
-        }
-    });
-
+    // 循环任务列表
     for (let taskName of taskNameList) {
         const task = TaskMap.get(taskName);
         if (!task) {
@@ -103,15 +93,29 @@ export async function executeTask(taskNameList: string[]) {
         }
         const result = results[taskName] = results[taskName] || [];
 
-        for (let configMap of taskConfigList) {
-            const config = await configMap[taskName](workflowOption.params);
+        // 循环执行每一个工作区
+        for (let workspace of workflowOption.workspaces) {
+            // 读取任务配置
+            let configMap;
             try {
-                const state = await task.execute(config);
+                const configFile = join(workspace, workflowOption!.entry);
+                configMap = require(configFile);
+            } catch(error) {
+                console.error(error);
+            }
+            const config = await configMap[taskName](workflowOption.params);
+
+            // 执行任务
+            try {
+                const state = await task.execute(workspace, config);
                 result.push(state);
             } catch(error) {
                 console.error(error);
                 result.push(TaskState.error);
             }
+
+            // 每个小任务结束的时候，将配置重新写回文件
+            writeFileSync(workflowOption.cacheFile, JSON.stringify(workflowCacheJSON, null, 2));
         }
     }
 
