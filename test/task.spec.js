@@ -6,21 +6,24 @@ const { initWorkflow, executeTask, registerTask, Task, TaskState } = require('..
 
 describe('task', () => {
 
-    it('初始化', () => {
+    describe('基础流程', () => {
+
+        // 初始化工作流
         initWorkflow({
             entry: '.test.config.js',
             params: {
-                test: true,
+                testA: true,
+                testB: true,
             },
             cacheFile: join(__dirname, './task/workspace/.dist.cache.json'),
             cacheDir: join(__dirname, './task/workspace/.dist-files'),
             workspaces: [
-                join(__dirname, './task/workspace'),
+                join(__dirname, './task/workspace-a'),
+                join(__dirname, './task/workspace-b'),
             ],
         });
-    });
-
-    it('自定义任务', () => {
+    
+        // 注册测试任务
         class TestTask extends Task {
             getName() {
                 return 'test';
@@ -29,17 +32,18 @@ describe('task', () => {
                 return '测试任务';
             }
             execute(config) {
-                console.log(11);
                 return TaskState.success;
             }
         }
         registerTask(TestTask);
-    });
-
-    it('执行任务', async () => {
-        const results = await executeTask([
-            'test',
-        ]);
-        console.log(results);
+    
+        it('执行任务', async () => {
+            const results = await executeTask([
+                'test',
+            ]);
+            equal(true, !!results.test);
+            equal(TaskState.success, results.test[0]);
+            equal(TaskState.success, results.test[1]);
+        });
     });
 });

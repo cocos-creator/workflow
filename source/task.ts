@@ -81,6 +81,10 @@ export async function executeTask(taskNameList: string[]) {
         throw new Error('Please initialize the workflow first');
     }
 
+    const results: {
+        [taskName: string]: TaskState[],
+    } = {};
+
     // 收集配置
     const taskConfigList: any[] = [];
     workflowOption.workspaces.forEach((dir) => {
@@ -97,11 +101,21 @@ export async function executeTask(taskNameList: string[]) {
         if (!task) {
             continue;
         }
+        const result = results[taskName] = results[taskName] || [];
+
         for (let configMap of taskConfigList) {
             const config = await configMap[taskName](workflowOption.params);
-            await task.execute(config);
+            try {
+                const state = await task.execute(config);
+                result.push(state);
+            } catch(error) {
+                console.error(error);
+                result.push(TaskState.error);
+            }
         }
     }
+
+    return results;
 }
 
 /**

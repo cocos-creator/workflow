@@ -3,7 +3,10 @@
 import { registerTask, Task, TaskState } from './task';
 
 class TscTask extends Task {
-    get title() {
+    getName() {
+        return 'tsc';
+    }
+    getTitle() {
         return 'Compile with tsc';
     }
 
@@ -11,4 +14,4 @@ class TscTask extends Task {
         return TaskState.success;
     }
 }
-registerTask('internal:tsc', TscTask);
+registerTask(TscTask);
