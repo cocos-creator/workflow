@@ -1,0 +1,18 @@
+{
+  "name": "@itharbors/workflow",
+  "version": "0.0.1",
+  "description": "",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test ./test",
+    "ci": "npm install && npm run build && npm run test"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {}
+}
