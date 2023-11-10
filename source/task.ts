@@ -3,7 +3,7 @@
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
 
-import chalk from 'chalk';
+import { magenta, cyan } from 'chalk';
 
 import { formatTime } from './utils';
 
@@ -95,7 +95,7 @@ export async function executeTask(taskNameList: string[]) {
     for (let taskName of taskNameList) {
         const taskStartTime = Date.now();
         // 开始任务的分割线
-        console.log(chalk.magenta(`${split} ${taskName} ${split}`));
+        console.log(magenta(`${split} ${taskName} ${split}`));
 
         const task = TaskMap.get(taskName);
         if (!task) {
@@ -114,7 +114,7 @@ export async function executeTask(taskNameList: string[]) {
                 console.error(error);
             }
             const config = await configMap[taskName](workflowOption.params);
-            console.log(chalk.cyan(workspace));
+            console.log(cyan(workspace));
 
             const vendorLog = console.log;
             console.log = function(...args) {
@@ -142,7 +142,7 @@ export async function executeTask(taskNameList: string[]) {
         }
 
         const taskEndTime = Date.now();
-        console.log(chalk.magenta(`${split} ${taskName}(${formatTime(taskEndTime - taskStartTime)}) ${split}`));
+        console.log(magenta(`${split} ${taskName}(${formatTime(taskEndTime - taskStartTime)}) ${split}`));
     }
 
     return results;

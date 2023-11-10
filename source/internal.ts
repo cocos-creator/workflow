@@ -3,7 +3,7 @@
 import { join, isAbsolute, dirname, basename } from 'node:path';
 import { existsSync, mkdirSync, renameSync } from 'node:fs';
 
-import chalk from 'chalk';
+import { yellow, magenta, cyan } from 'chalk';
 
 import { registerTask, Task, TaskState } from './task';
 import { bash, print, printEmpty } from './utils';
@@ -120,7 +120,7 @@ class RepoTask extends Task {
             const bsd = dirname(path);
             const bsn = basename(path);
 
-            print(chalk.yellow(`>> ${config.repo.url}`));
+            print(yellow(`>> ${config.repo.url}`));
 
             // 允许配置某些仓库跳过
             if (config.skip) {
