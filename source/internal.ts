@@ -124,14 +124,15 @@ class RepoTask extends Task {
 
             // 允许配置某些仓库跳过
             if (config.skip) {
-                print(`因配置跳过检查当前仓库，请手动确认仓库是否在最新分支`);
+                print(`Skip checking the current repository due to configuration.`);
+                print(`Please manually confirm if the repository is on the latest branch.`);
                 return TaskState.skip;
             }
 
             // 如果文件夹不是 git 仓库或者不存在，则重新 clone
             if (existsSync(path)) {
                 if (!existsSync(join(path, '.git'))) {
-                    print(`检测文件夹不是一个合法的 GIT 仓库，将备份文件夹，尝试重新 clone`);
+                    print(`Detecting that the folder is not a valid GIT repository. Backup the folder and attempt to re-clone.`);
                     const dirBackup = join(bsd, '_' + bsn);
                     renameSync(path, dirBackup);
                 }
@@ -157,13 +158,13 @@ class RepoTask extends Task {
                     cwd: path,
                 });
                 if (code !== 0) {
-                    fetchError = new Error('返回值不为 0');
+                    fetchError = new Error('Return value is not 0');
                 }
             } catch(error) {
                 fetchError = error as Error;
             }
             if (fetchError) {
-                print(`同步远端失败[ git fetch ${config.repo.name} ]`);
+                print(`Syncing remote failed [ git fetch ${config.repo.name} ]`);
                 print(fetchError);
                 return TaskState.error;
             }
@@ -181,7 +182,7 @@ class RepoTask extends Task {
                         remoteID = log.replace(/\n/g, '').trim();
                     });
                 } catch(error) {
-                    print(`获取远端 commit 失败[ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
+                    print(`Failed to fetch remote commit [ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
                     print(error as Error);
                     return TaskState.error;
                 }
@@ -194,12 +195,12 @@ class RepoTask extends Task {
                         remoteID = log.replace(/\n/g, '').trim();
                     });
                 } catch(error) {
-                    print(`获取远端 commit 失败[ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
+                    print(`Failed to fetch remote commit [ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
                     print(error as Error);
                     return TaskState.error;
                 }
             } else {
-                print(`获取远端 commit 失败[ 没有配置 branch 或者 tag ]`);
+                print(`Failed to fetch remote commit [ No branch or tag configured ]`);
                 return TaskState.error;
             }
 
@@ -212,17 +213,17 @@ class RepoTask extends Task {
                     localID = log.replace(/\n/g, '').trim();
                 });
             } catch(error) {
-                print(`获取本地 commit 失败[ git rev-parse HEAD ]`);
+                print(`Failed to retrieve local commits [ git rev-parse HEAD ]`);
                 print(error as Error);
                 return TaskState.error;
             }
 
             // 打印 commit 对比信息
             if (remoteID !== localID) {
-                print(`${localID} (本地) => ${remoteID} (远端)`);
+                print(`${localID} (local) => ${remoteID} (remote)`);
             } else {
                 // 本地远端 commit 相同
-                print(`${remoteID} (本地 / 远端)`);
+                print(`${remoteID} (local / remote)`);
                 return TaskState.skip;
             }
 
@@ -239,16 +240,16 @@ class RepoTask extends Task {
             });
             if (isDirty) {
                 if (!config.hard) {
-                    print(`仓库有修改，跳过更新`);
+                    print(`Repository has modifications, skip update`);
                     return TaskState.skip;
                 } else {
-                    print(`仓库有修改，暂存代码`);
+                    print(`Repository has modifications, stash changes`);
                     try {
                         await bash(cmd.git, ['stash'], {
                             cwd: path,
                         });
                     } catch(error) {
-                        print(`暂存代码失败，无法继续还原代码`);
+                        print(`Stashing changes failed, unable to proceed with code restoration`);
                         print(error as Error);
                         return TaskState.error;
                     }
@@ -267,12 +268,12 @@ class RepoTask extends Task {
                     }
                 });
             } catch(error) {
-                print(`获取本地 commit 失败[ git rev-parse HEAD ]`);
+                print(`Failed to retrieve local commits [ git rev-parse HEAD ]`);
                 print(error as Error);
                 return TaskState.error;
             }
             if (!isEditorBranch && !config.hard) {
-                print(`不在 ${config.repo.local} 分支上，跳过更新`);
+                print(`Not on the ${config.repo.local} branch, skipping update`);
                 return TaskState.skip;
             } else {
                 try {
@@ -297,9 +298,9 @@ class RepoTask extends Task {
                 }, (chunk) => {
                     info += chunk;
                 });
-                print(`还原代码: ${info.trim()}`);
+                print(`Restore code: ${info.trim()}`);
             } catch(error) {
-                print('还原代码失败');
+                print('Failed to restore code');
                 print(error as Error);
                 return TaskState.error;
             }
