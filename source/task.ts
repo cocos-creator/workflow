@@ -3,6 +3,8 @@
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
 
+import { formatTime } from './utils';
+
 let workflowOption: workflowConfig | undefined = undefined;
 let workflowCacheJSON: { [task: string]: { [key: string]: boolean | string | number | undefined } } = {};
 const TaskMap = new Map<string, Task>();
@@ -85,8 +87,14 @@ export async function executeTask(taskNameList: string[]) {
         [taskName: string]: TaskState[],
     } = {};
 
+    const split = ''.padEnd(20, '=');
+
     // 循环任务列表
     for (let taskName of taskNameList) {
+        const taskStartTime = Date.now();
+        // 开始任务的分割线
+        console.log(`${split} ${taskName} ${split}`);
+
         const task = TaskMap.get(taskName);
         if (!task) {
             continue;
@@ -105,7 +113,9 @@ export async function executeTask(taskNameList: string[]) {
             }
             const config = await configMap[taskName](workflowOption.params);
 
+            console.log(`  ▶ ${task.getTitle()}`);
             // 执行任务
+            const startTime = Date.now();
             try {
                 const state = await task.execute(workspace, config);
                 result.push(state);
@@ -113,10 +123,15 @@ export async function executeTask(taskNameList: string[]) {
                 console.error(error);
                 result.push(TaskState.error);
             }
+            const endTime = Date.now();
+            console.log(`--- ${task.getTitle()} ---(${formatTime(endTime - startTime)})`);
 
             // 每个小任务结束的时候，将配置重新写回文件
             writeFileSync(workflowOption.cacheFile, JSON.stringify(workflowCacheJSON, null, 2));
         }
+
+        const taskEndTime = Date.now();
+        console.log(`${split} ${taskName} ${split}(${formatTime(taskEndTime - taskStartTime)})`);
     }
 
     return results;
