@@ -3,6 +3,8 @@
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
 
+import chalk from 'chalk';
+
 import { formatTime } from './utils';
 
 let workflowOption: workflowConfig | undefined = undefined;
@@ -93,7 +95,7 @@ export async function executeTask(taskNameList: string[]) {
     for (let taskName of taskNameList) {
         const taskStartTime = Date.now();
         // 开始任务的分割线
-        console.log(`${split} ${taskName} ${split}`);
+        console.log(chalk.magenta(`${split} ${taskName} ${split}`));
 
         const task = TaskMap.get(taskName);
         if (!task) {
@@ -112,8 +114,17 @@ export async function executeTask(taskNameList: string[]) {
                 console.error(error);
             }
             const config = await configMap[taskName](workflowOption.params);
+            console.log(chalk.cyan(workspace));
 
-            console.log(`  ▶ ${task.getTitle()}`);
+            const vendorLog = console.log;
+            console.log = function(...args) {
+                const type = typeof args[0];
+                if (type === 'string' || Buffer.isBuffer(args[0])) {
+                    args[0] = '  ' + args[0];
+                }
+                vendorLog.call(console, ...args);
+            }
+            // console.log(`  ▶ ${task.getTitle()}`);
             // 执行任务
             const startTime = Date.now();
             try {
@@ -124,14 +135,14 @@ export async function executeTask(taskNameList: string[]) {
                 result.push(TaskState.error);
             }
             const endTime = Date.now();
-            console.log(`--- ${task.getTitle()} ---(${formatTime(endTime - startTime)})`);
+            console.log = vendorLog;
 
             // 每个小任务结束的时候，将配置重新写回文件
             writeFileSync(workflowOption.cacheFile, JSON.stringify(workflowCacheJSON, null, 2));
         }
 
         const taskEndTime = Date.now();
-        console.log(`${split} ${taskName} ${split}(${formatTime(taskEndTime - taskStartTime)})`);
+        console.log(chalk.magenta(`${split} ${taskName}(${formatTime(taskEndTime - taskStartTime)}) ${split}`));
     }
 
     return results;

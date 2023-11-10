@@ -77,3 +77,14 @@ export function formatTime(time: number) {
     }
     return `${(time + 'ms').padStart(6, ' ')}`;
 }
+
+export function print(str: string | Buffer | Error) {
+    try {
+        str = (str + '').trim();
+        str && console.log(str);
+    } catch(error) {}
+}
+
+export function printEmpty() {
+    console.log(' ');
+}

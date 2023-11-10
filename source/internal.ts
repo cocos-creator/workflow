@@ -3,10 +3,11 @@
 import { join, isAbsolute, dirname, basename } from 'node:path';
 import { existsSync, mkdirSync, renameSync } from 'node:fs';
 
-import { registerTask, Task, TaskState } from './task';
-import { bash } from './utils';
+import chalk from 'chalk';
 
-const prefix = '    ';
+import { registerTask, Task, TaskState } from './task';
+import { bash, print, printEmpty } from './utils';
+
 const cmd = {
     git: process.platform === 'win32' ? 'git.cmd' : 'git',
 };
@@ -95,11 +96,11 @@ export const RepoTaskMethods = {
             await bash(cmd.git, ['remote', 'add', name, remote], {
                 cwd: path,
             }, () => {});
-        } catch(error) {}
 
-        await bash(cmd.git, ['remote', 'set-url', name, remote], {
-            cwd: path,
-        }, () => {});
+            await bash(cmd.git, ['remote', 'set-url', name, remote], {
+                cwd: path,
+            }, () => {});
+        } catch(error) {}
     },
 };
 class RepoTask extends Task {
@@ -119,22 +120,22 @@ class RepoTask extends Task {
             const bsd = dirname(path);
             const bsn = basename(path);
 
+            print(chalk.yellow(`>> ${config.repo.url}`));
+
             // 允许配置某些仓库跳过
             if (config.skip) {
-                console.log(`${prefix}因配置跳过检查当前仓库，请手动确认仓库是否在最新分支`);
+                print(`因配置跳过检查当前仓库，请手动确认仓库是否在最新分支`);
                 return TaskState.skip;
             }
 
             // 如果文件夹不是 git 仓库或者不存在，则重新 clone
             if (existsSync(path)) {
                 if (!existsSync(join(path, '.git'))) {
-                    console.log(`${prefix}检测文件夹不是一个合法的 GIT 仓库，将备份文件夹，尝试重新 clone`);
+                    print(`检测文件夹不是一个合法的 GIT 仓库，将备份文件夹，尝试重新 clone`);
                     const dirBackup = join(bsd, '_' + bsn);
                     renameSync(path, dirBackup);
                 }
             }
-
-            console.log(prefix + `${config.repo.url}`);
 
             if (!existsSync(bsd)) {
                 mkdirSync(bsd);
@@ -150,7 +151,7 @@ class RepoTask extends Task {
             await RepoTaskMethods.updateRemote(config.repo.name, config.repo.url, path);
 
             // 同步远端
-            let fetchError;
+            let fetchError: Error | undefined;
             try {
                 const code = await bash(cmd.git, ['fetch', config.repo.name], {
                     cwd: path,
@@ -159,11 +160,11 @@ class RepoTask extends Task {
                     fetchError = new Error('返回值不为 0');
                 }
             } catch(error) {
-                fetchError = error;
+                fetchError = error as Error;
             }
             if (fetchError) {
-                console.log(`${prefix}同步远端失败[ git fetch ${config.repo.name} ]`);
-                console.log(fetchError);
+                print(`同步远端失败[ git fetch ${config.repo.name} ]`);
+                print(fetchError);
                 return TaskState.error;
             }
 
@@ -180,8 +181,8 @@ class RepoTask extends Task {
                         remoteID = log.replace(/\n/g, '').trim();
                     });
                 } catch(error) {
-                    console.log(`${prefix}获取远端 commit 失败[ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
-                    console.log(error);
+                    print(`获取远端 commit 失败[ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
+                    print(error as Error);
                     return TaskState.error;
                 }
             } else if (config.repo.targetType === 'tag') {
@@ -193,12 +194,12 @@ class RepoTask extends Task {
                         remoteID = log.replace(/\n/g, '').trim();
                     });
                 } catch(error) {
-                    console.log(`${prefix}获取远端 commit 失败[ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
-                    console.log(error);
+                    print(`获取远端 commit 失败[ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
+                    print(error as Error);
                     return TaskState.error;
                 }
             } else {
-                console.log(`${prefix}获取远端 commit 失败[ 没有配置 branch 或者 tag ]`);
+                print(`获取远端 commit 失败[ 没有配置 branch 或者 tag ]`);
                 return TaskState.error;
             }
 
@@ -211,17 +212,17 @@ class RepoTask extends Task {
                     localID = log.replace(/\n/g, '').trim();
                 });
             } catch(error) {
-                console.log(`${prefix}获取本地 commit 失败[ git rev-parse HEAD ]`);
-                console.log(error);
+                print(`获取本地 commit 失败[ git rev-parse HEAD ]`);
+                print(error as Error);
                 return TaskState.error;
             }
 
             // 打印 commit 对比信息
             if (remoteID !== localID) {
-                console.log(`${prefix}${localID} (本地) => ${remoteID} (远端)`);
+                print(`${localID} (本地) => ${remoteID} (远端)`);
             } else {
                 // 本地远端 commit 相同
-                console.log(`${prefix}${remoteID} (本地 / 远端)`);
+                print(`${remoteID} (本地 / 远端)`);
                 return TaskState.skip;
             }
 
@@ -238,17 +239,17 @@ class RepoTask extends Task {
             });
             if (isDirty) {
                 if (!config.hard) {
-                    console.log(`${prefix}仓库有修改，跳过更新`);
+                    print(`仓库有修改，跳过更新`);
                     return TaskState.skip;
                 } else {
-                    console.log(`${prefix}仓库有修改，暂存代码`);
+                    print(`仓库有修改，暂存代码`);
                     try {
                         await bash(cmd.git, ['stash'], {
                             cwd: path,
                         });
                     } catch(error) {
-                        console.log(`${prefix}暂存代码失败，无法继续还原代码`);
-                        console.log(error);
+                        print(`暂存代码失败，无法继续还原代码`);
+                        print(error as Error);
                         return TaskState.error;
                     }
                 }
@@ -266,22 +267,27 @@ class RepoTask extends Task {
                     }
                 });
             } catch(error) {
-                console.log(`${prefix}获取本地 commit 失败[ git rev-parse HEAD ]`);
-                console.log(error);
+                print(`获取本地 commit 失败[ git rev-parse HEAD ]`);
+                print(error as Error);
                 return TaskState.error;
             }
             if (!isEditorBranch && !config.hard) {
-                console.log(`${prefix}不在 ${config.repo.local} 分支上，跳过更新`);
+                print(`不在 ${config.repo.local} 分支上，跳过更新`);
                 return TaskState.skip;
             } else {
-                // 从当前位置切出分支，如果有则忽略
-                await bash(cmd.git, ['checkout', '-b', config.repo.local], {
-                    cwd: path,
-                });
-                // 从当前位置切出分支，如果有则忽略
-                await bash(cmd.git, ['checkout', config.repo.local], {
-                    cwd: path,
-                });
+                try {
+                    // 从当前位置切出分支，如果有则忽略
+                    await bash(cmd.git, ['checkout', '-b', config.repo.local], {
+                        cwd: path,
+                    });
+                } catch(error) {}
+
+                try {
+                    // 从当前位置切出分支，如果有则忽略
+                    await bash(cmd.git, ['checkout', config.repo.local], {
+                        cwd: path,
+                    });
+                } catch(error) {}
             }
 
             try {
@@ -291,13 +297,15 @@ class RepoTask extends Task {
                 }, (chunk) => {
                     info += chunk;
                 });
-                console.log(prefix + `还原代码: ${info.trim()}`);
+                print(`还原代码: ${info.trim()}`);
             } catch(error) {
-                console.log(prefix + '还原代码失败');
-                console.log(error);
+                print('还原代码失败');
+                print(error as Error);
                 return TaskState.error;
             }
 
+            print(`>> ${config.repo.url}`);
+            printEmpty();
             return TaskState.success;
         }
 

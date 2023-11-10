@@ -8,11 +8,16 @@
     "test": "node --test ./test/*.js",
     "ci": "npm install && npm run build && npm run test"
   },
-  "author": "",
+  "author": "VisualSJ",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.9.0",
     "typescript": "^5.2.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "chalk": "^5.3.0"
+  }
 }
