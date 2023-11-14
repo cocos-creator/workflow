@@ -1,5 +1,6 @@
 import {
-    Stats, stat, readdir, existsSync, mkdirSync,
+    Stats, stat, readdir, existsSync, mkdirSync, mkdir,
+    MakeDirectoryOptions,
 } from 'fs';
 import { join } from 'path';
 import { spawn, SpawnOptionsWithoutStdio } from 'child_process';
@@ -100,6 +101,10 @@ export function formatTime(time: number) {
     return `${(`${time}ms`).padStart(6, ' ')}`;
 }
 
+/**
+ * 打印
+ * @param str
+ */
 export function print(str: string | Buffer | Error) {
     try {
         const trimStr = (`${str}`).trim();
@@ -114,4 +119,30 @@ export function print(str: string | Buffer | Error) {
  */
 export function printEmpty() {
     console.log(' ');
+}
+
+const getMode = (options: MakeDirectoryOptions) => {
+    const defaults = { mode: 0o777 };
+    if (typeof options === 'number') return options;
+    return ({ ...defaults, ...options }).mode;
+};
+
+/**
+ * 创建目录
+ * @param dir
+ * @param options
+ * @returns
+ */
+export async function makeDir(dir: string, options: MakeDirectoryOptions = {}) {
+    return new Promise((resolve, reject) => {
+        mkdir(dir, {
+            mode: getMode(options),
+            recursive: true,
+        }, (error) => {
+            if (error) {
+                return reject(error);
+            }
+            return resolve(undefined);
+        });
+    });
 }

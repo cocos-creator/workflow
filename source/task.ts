@@ -1,9 +1,9 @@
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { writeFileSync } from 'node:fs';
 
 import { magenta, cyan } from 'chalk';
 
-import { formatTime } from './utils';
+import { formatTime, makeDir } from './utils';
 
 interface workflowConfig {
     // 配置文件入口，需要时一个 js 文件，绝对地址
@@ -141,6 +141,8 @@ export async function executeTask(taskNameList: string[]) {
             console.log = vendorLog;
 
             // 每个小任务结束的时候，将配置重新写回文件
+            const dir = dirname(workflowOption.cacheFile);
+            await makeDir(dir);
             writeFileSync(workflowOption.cacheFile, JSON.stringify(workflowCacheJSON, null, 2));
         }
 
