@@ -1,15 +1,9 @@
-'use strict';
-
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
 
 import { magenta, cyan } from 'chalk';
 
 import { formatTime } from './utils';
-
-let workflowOption: workflowConfig | undefined = undefined;
-let workflowCacheJSON: { [task: string]: { [key: string]: boolean | string | number | undefined } } = {};
-const TaskMap = new Map<string, Task>();
 
 interface workflowConfig {
     // 配置文件入口，需要时一个 js 文件，绝对地址
@@ -24,8 +18,23 @@ interface workflowConfig {
     workspaces: string[];
 }
 
-export abstract class Task {
+/**
+ * 任务状态
+ */
+export enum TaskState {
+    skip = 'skip',
+    warn = 'warn',
+    error = 'error',
+    success = 'success',
+    unknown = 'unknown',
+}
 
+let workflowOption: workflowConfig | undefined;
+let workflowCacheJSON: {
+    [task: string]: { [key: string]: boolean | string | number | undefined },
+} = {};
+
+export abstract class Task {
     setCache(key: string, value: string | number | boolean | undefined) {
         if (!workflowCacheJSON) {
             return;
@@ -34,6 +43,7 @@ export abstract class Task {
         const data = workflowCacheJSON[name] = workflowCacheJSON[name] || {};
         data[key] = value;
     }
+
     getCache(key: string): string | number | boolean | undefined {
         if (!workflowCacheJSON) {
             return;
@@ -48,37 +58,30 @@ export abstract class Task {
     }
 
     abstract getName(): string;
+
     abstract getTitle(): string;
+
     abstract execute(workspace: string, config: any): Promise<TaskState> | TaskState;
 }
 
-/**
- * 任务状态
- */
-export enum TaskState {
-    skip = 'skip',
-    warn = 'warn',
-    error = 'error',
-    success = 'success',
-    unknown = 'unknown',
-}
+const TaskMap = new Map<string, Task>();
 
 /**
  * 初始化工作流
- * @param config 
+ * @param config
  */
 export function initWorkflow(config: workflowConfig) {
     workflowOption = config;
     try {
-        workflowCacheJSON = require(config.cacheFile);   
-    } catch(error) {
+        workflowCacheJSON = require(config.cacheFile);
+    } catch (error) {
         workflowCacheJSON = {};
     }
 }
 
 /**
  * 执行工作流任务
- * @param taskNameList 
+ * @param taskNameList
  */
 export async function executeTask(taskNameList: string[]) {
     if (!workflowOption) {
@@ -92,7 +95,7 @@ export async function executeTask(taskNameList: string[]) {
     const split = ''.padEnd(20, '=');
 
     // 循环任务列表
-    for (let taskName of taskNameList) {
+    for (const taskName of taskNameList) {
         const taskStartTime = Date.now();
         // 开始任务的分割线
         console.log(magenta(`${split} ${taskName} ${split}`));
@@ -104,33 +107,33 @@ export async function executeTask(taskNameList: string[]) {
         const result = results[taskName] = results[taskName] || [];
 
         // 循环执行每一个工作区
-        for (let workspace of workflowOption.workspaces) {
+        for (const workspace of workflowOption.workspaces) {
             // 读取任务配置
             let configMap;
             try {
                 const configFile = join(workspace, workflowOption!.entry);
                 configMap = require(configFile);
-            } catch(error) {
+            } catch (error) {
                 console.error(error);
             }
             const config = await configMap[taskName](workflowOption.params);
             console.log(cyan(workspace));
 
             const vendorLog = console.log;
-            console.log = function(...args) {
+            console.log = function (...args) {
                 const type = typeof args[0];
                 if (type === 'string' || Buffer.isBuffer(args[0])) {
-                    args[0] = '  ' + args[0];
+                    args[0] = `  ${args[0]}`;
                 }
                 vendorLog.call(console, ...args);
-            }
+            };
             // console.log(`  ▶ ${task.getTitle()}`);
             // 执行任务
             const startTime = Date.now();
             try {
                 const state = await task.execute(workspace, config);
                 result.push(state);
-            } catch(error) {
+            } catch (error) {
                 console.error(error);
                 result.push(TaskState.error);
             }
@@ -150,8 +153,8 @@ export async function executeTask(taskNameList: string[]) {
 
 /**
  * 注册工作流任务
- * @param taskName 
- * @param handle 
+ * @param taskName
+ * @param handle
  */
 export function registerTask(taskClass: new () => Task) {
     const task = new taskClass();

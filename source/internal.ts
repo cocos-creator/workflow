@@ -1,6 +1,7 @@
-'use strict';
-
-import { join, isAbsolute, dirname, basename } from 'node:path';
+/* eslint-disable max-classes-per-file */
+import {
+    join, isAbsolute, dirname, basename,
+} from 'node:path';
 import { existsSync, mkdirSync, renameSync } from 'node:fs';
 
 import { yellow, magenta, cyan } from 'chalk';
@@ -9,7 +10,7 @@ import { registerTask, Task, TaskState } from './task';
 import { bash, print, printEmpty } from './utils';
 
 const cmd = {
-    git: process.platform === 'win32' ? 'git.cmd' : 'git',
+    git: process.platform === 'win32' ? 'git' : 'git',
 };
 
 export type TscConfig = string[];
@@ -28,7 +29,7 @@ type repoConfigItem = {
         // 目标分支或者 tag 的信息
         targetValue: string;
     };
-    
+
     // 工作目录
     path: string;
 
@@ -43,6 +44,7 @@ class TscTask extends Task {
     getName() {
         return 'tsc';
     }
+
     getTitle() {
         return 'Compile with tsc';
     }
@@ -50,7 +52,7 @@ class TscTask extends Task {
     async execute(workspace: string, config: TscConfig): Promise<TaskState> {
         let err = false;
 
-        for (let relativePath of config) {
+        for (const relativePath of config) {
             // 将相对路径转成绝对路径
             const path = isAbsolute(relativePath) ? relativePath : join(workspace, relativePath);
 
@@ -59,7 +61,7 @@ class TscTask extends Task {
                 await bash('tsc', [], {
                     cwd: path,
                 });
-            } catch(error) {
+            } catch (error) {
                 console.error(error);
                 err = true;
             }
@@ -100,19 +102,20 @@ export const RepoTaskMethods = {
             await bash(cmd.git, ['remote', 'set-url', name, remote], {
                 cwd: path,
             }, () => {});
-        } catch(error) {}
+        } catch (error) { /** ignore */ }
     },
 };
 class RepoTask extends Task {
     getName() {
         return 'repo';
     }
+
     getTitle() {
         return 'Synchronize the Git repository';
     }
 
-    async execute(workspace: string, config: RepoConfig): Promise<TaskState> {
-        let err = false;
+    async execute(workspace: string, repoConfigArray: RepoConfig): Promise<TaskState> {
+        const err = false;
 
         async function checkoutRepo(config: repoConfigItem): Promise<TaskState> {
             // 仓库绝对地址
@@ -124,16 +127,16 @@ class RepoTask extends Task {
 
             // 允许配置某些仓库跳过
             if (config.skip) {
-                print(`Skip checking the current repository due to configuration.`);
-                print(`Please manually confirm if the repository is on the latest branch.`);
+                print('Skip checking the current repository due to configuration.');
+                print('Please manually confirm if the repository is on the latest branch.');
                 return TaskState.skip;
             }
 
             // 如果文件夹不是 git 仓库或者不存在，则重新 clone
             if (existsSync(path)) {
                 if (!existsSync(join(path, '.git'))) {
-                    print(`Detecting that the folder is not a valid GIT repository. Backup the folder and attempt to re-clone.`);
-                    const dirBackup = join(bsd, '_' + bsn);
+                    print('Detecting that the folder is not a valid GIT repository. Backup the folder and attempt to re-clone.');
+                    const dirBackup = join(bsd, `_${bsn}`);
                     renameSync(path, dirBackup);
                 }
             }
@@ -160,7 +163,7 @@ class RepoTask extends Task {
                 if (code !== 0) {
                     fetchError = new Error('Return value is not 0');
                 }
-            } catch(error) {
+            } catch (error) {
                 fetchError = error as Error;
             }
             if (fetchError) {
@@ -178,10 +181,10 @@ class RepoTask extends Task {
                     await bash(cmd.git, ['rev-parse', `${config.repo.name}/${config.repo.targetValue}`], {
                         cwd: path,
                     }, (chunk) => {
-                        const log = chunk + '';
+                        const log = `${chunk}`;
                         remoteID = log.replace(/\n/g, '').trim();
                     });
-                } catch(error) {
+                } catch (error) {
                     print(`Failed to fetch remote commit [ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
                     print(error as Error);
                     return TaskState.error;
@@ -191,16 +194,16 @@ class RepoTask extends Task {
                     await bash(cmd.git, ['rev-parse', `tags/${config.repo.targetValue}`], {
                         cwd: path,
                     }, (chunk) => {
-                        const log = chunk + '';
+                        const log = `${chunk}`;
                         remoteID = log.replace(/\n/g, '').trim();
                     });
-                } catch(error) {
+                } catch (error) {
                     print(`Failed to fetch remote commit [ git rev-parse ${config.repo.name}/${config.repo.targetValue} ]`);
                     print(error as Error);
                     return TaskState.error;
                 }
             } else {
-                print(`Failed to fetch remote commit [ No branch or tag configured ]`);
+                print('Failed to fetch remote commit [ No branch or tag configured ]');
                 return TaskState.error;
             }
 
@@ -209,11 +212,11 @@ class RepoTask extends Task {
                 await bash(cmd.git, ['rev-parse', 'HEAD'], {
                     cwd: path,
                 }, (chunk) => {
-                    const log = chunk + '';
+                    const log = `${chunk}`;
                     localID = log.replace(/\n/g, '').trim();
                 });
-            } catch(error) {
-                print(`Failed to retrieve local commits [ git rev-parse HEAD ]`);
+            } catch (error) {
+                print('Failed to retrieve local commits [ git rev-parse HEAD ]');
                 print(error as Error);
                 return TaskState.error;
             }
@@ -227,32 +230,30 @@ class RepoTask extends Task {
                 return TaskState.skip;
             }
 
-
             // 检查是否有修改
             let isDirty = false;
             await bash(cmd.git, ['status', '-uno'], {
                 cwd: path,
             }, (chunk) => {
-                const info = chunk + '';
+                const info = `${chunk}`;
                 if (!/nothing to commit/.test(info)) {
                     isDirty = true;
                 }
             });
             if (isDirty) {
                 if (!config.hard) {
-                    print(`Repository has modifications, skip update`);
+                    print('Repository has modifications, skip update');
                     return TaskState.skip;
-                } else {
-                    print(`Repository has modifications, stash changes`);
-                    try {
-                        await bash(cmd.git, ['stash'], {
-                            cwd: path,
-                        });
-                    } catch(error) {
-                        print(`Stashing changes failed, unable to proceed with code restoration`);
-                        print(error as Error);
-                        return TaskState.error;
-                    }
+                }
+                print('Repository has modifications, stash changes');
+                try {
+                    await bash(cmd.git, ['stash'], {
+                        cwd: path,
+                    });
+                } catch (error) {
+                    print('Stashing changes failed, unable to proceed with code restoration');
+                    print(error as Error);
+                    return TaskState.error;
                 }
             }
 
@@ -262,34 +263,33 @@ class RepoTask extends Task {
                 await bash(cmd.git, ['branch', '--show-current'], {
                     cwd: path,
                 }, (chunk) => {
-                    const log = chunk + '';
+                    const log = `${chunk}`;
                     if (new RegExp(config.repo.local).test(log)) {
                         isEditorBranch = true;
                     }
                 });
-            } catch(error) {
-                print(`Failed to retrieve local commits [ git rev-parse HEAD ]`);
+            } catch (error) {
+                print('Failed to retrieve local commits [ git rev-parse HEAD ]');
                 print(error as Error);
                 return TaskState.error;
             }
             if (!isEditorBranch && !config.hard) {
                 print(`Not on the ${config.repo.local} branch, skipping update`);
                 return TaskState.skip;
-            } else {
-                try {
-                    // 从当前位置切出分支，如果有则忽略
-                    await bash(cmd.git, ['checkout', '-b', config.repo.local], {
-                        cwd: path,
-                    });
-                } catch(error) {}
-
-                try {
-                    // 从当前位置切出分支，如果有则忽略
-                    await bash(cmd.git, ['checkout', config.repo.local], {
-                        cwd: path,
-                    });
-                } catch(error) {}
             }
+            try {
+                // 从当前位置切出分支，如果有则忽略
+                await bash(cmd.git, ['checkout', '-b', config.repo.local], {
+                    cwd: path,
+                }, () => {});
+            } catch (error) { /** ignore */ }
+
+            try {
+                // 从当前位置切出分支，如果有则忽略
+                await bash(cmd.git, ['checkout', config.repo.local], {
+                    cwd: path,
+                }, () => {});
+            } catch (error) { /** ignore */ }
 
             try {
                 let info = '';
@@ -299,7 +299,7 @@ class RepoTask extends Task {
                     info += chunk;
                 });
                 print(`Restore code: ${info.trim()}`);
-            } catch(error) {
+            } catch (error) {
                 print('Failed to restore code');
                 print(error as Error);
                 return TaskState.error;
@@ -310,7 +310,7 @@ class RepoTask extends Task {
             return TaskState.success;
         }
 
-        for (let repoConfig of config) {
+        for (const repoConfig of repoConfigArray) {
             await checkoutRepo(repoConfig);
         }
 
