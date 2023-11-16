@@ -1,6 +1,8 @@
-const { equal } = require('node:assert');
+const { equal, deepEqual } = require('node:assert');
 const { describe, it, before } = require('node:test');
 const { join } = require('node:path');
+const { spawnSync } = require('node:child_process');
+const { readFileSync, existsSync } = require('node:fs');
 
 const {
     initWorkflow,
@@ -32,11 +34,6 @@ describe('task', () => {
             // 注册测试任务
             class TestTask extends Task {
                 // eslint-disable-next-line class-methods-use-this
-                getName() {
-                    return 'test';
-                }
-
-                // eslint-disable-next-line class-methods-use-this
                 getTitle() {
                     return '测试任务';
                 }
@@ -46,7 +43,7 @@ describe('task', () => {
                     return TaskState.success;
                 }
             }
-            registerTask(TestTask);
+            registerTask('test', TestTask);
         });
 
         it('执行任务', async () => {
@@ -59,43 +56,61 @@ describe('task', () => {
         });
     });
 
-    describe('clone 仓库', () => {
+    describe('clone', () => {
+        const baseDir = join(__dirname, './task/workspace-repo');
+        const PATH = {
+            repo: join(baseDir, './.dist/repository'),
+            cache: join(baseDir, './.dist/cache.json'),
+            result: join(baseDir, './.dist/result.json'),
+        };
+
         before(() => {
-            // 初始化工作流
-            initWorkflow({
-                entry: '.test.config.js',
-                params: {
-                    repo: [
-                        {
-                            repo: {
-                                name: '_test_origin_',
-                                url: 'git@github.com:itharbors/workflow.git',
-                                local: '_test_branch_',
-
-                                targetType: 'branch',
-                                targetValue: 'main',
-                            },
-
-                            path: './.dist/repository',
-                            hard: true,
-                            skip: false,
-                        },
-                    ],
-                },
-                cacheFile: join(__dirname, './task/.dist.cache.json'),
-                cacheDir: join(__dirname, './task/.dist-files'),
-                workspaces: [
-                    join(__dirname, './task/workspace-repo'),
-                ],
-            });
+            spawnSync('node', [join(baseDir, './run.js')]);
         });
 
-        it('执行任务', async () => {
-            const results = await executeTask([
-                'repo',
-            ]);
-            equal(true, !!results.repo);
-            equal(TaskState.success, results.repo[0]);
+        it('检查仓库文件夹', async () => {
+            const exists = existsSync(PATH.repo);
+            equal(true, exists);
+        });
+
+        it('检查缓存信息', async () => {
+            const cacheStr = readFileSync(PATH.cache, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            deepEqual({}, cacheJSON);
+        });
+
+        it('检查运行结果', async () => {
+            const cacheStr = readFileSync(PATH.result, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            deepEqual({
+                repo: ['success'],
+            }, cacheJSON);
+        });
+    });
+
+    describe('tsc', () => {
+        const baseDir = join(__dirname, './task/workspace-tsc');
+        const PATH = {
+            cache: join(baseDir, './.dist/cache.json'),
+            result: join(baseDir, './.dist/result.json'),
+        };
+
+        before(() => {
+            spawnSync('node', [join(baseDir, './run.js')]);
+        });
+
+        it('检查缓存信息', async () => {
+            const cacheStr = readFileSync(PATH.cache, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            equal(true, !!cacheJSON.tsc);
+        });
+
+        it('检查运行结果', async () => {
+            const cacheStr = readFileSync(PATH.result, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            deepEqual({
+                tsc: ['success'],
+            }, cacheJSON);
         });
     });
 });

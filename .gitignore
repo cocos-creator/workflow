@@ -28,7 +28,7 @@ npm-debug.log*
 
 # 忽略测试结果
 coverage/
-test/.dist*
+test/**/.dist*
 
 # 忽略编辑器生成的文件
 .vscode/

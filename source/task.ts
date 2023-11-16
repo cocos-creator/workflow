@@ -1,7 +1,12 @@
+/* eslint-disable max-classes-per-file */
 import { join, dirname } from 'node:path';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 
-import { magenta, cyan } from 'chalk';
+import { magenta, cyan, dim } from 'chalk';
+import {
+    TaskManager,
+    Task as StructuresTask,
+} from '@itharbors/structures';
 
 import { formatTime, makeDir } from './utils';
 
@@ -18,6 +23,9 @@ interface workflowConfig {
     workspaces: string[];
 }
 
+export type baseType = string | number | boolean | undefined;
+export type baseObject = { [key: string]: baseType | baseObject };
+
 /**
  * 任务状态
  */
@@ -31,40 +39,93 @@ export enum TaskState {
 
 let workflowOption: workflowConfig | undefined;
 let workflowCacheJSON: {
-    [task: string]: { [key: string]: boolean | string | number | undefined },
+    [task: string]: { [key: string]: baseObject },
 } = {};
 
-export abstract class Task {
-    setCache(key: string, value: string | number | boolean | undefined) {
+export class Task {
+    // 任务名称
+    protected name: string;
+
+    public messages: string[] = [];
+
+    constructor(name: string) {
+        this.name = name;
+    }
+
+    /**
+     * 获取最大并发数
+     * @returns {number}
+     */
+    static getMaxConcurrent() {
+        return 1;
+    }
+
+    /**
+     * 设置缓存
+     * @param key 缓存的键名
+     * @param value 缓存的值
+     */
+    setCache(key: string, value: baseObject) {
         if (!workflowCacheJSON) {
             return;
         }
-        const name = this.getName();
-        const data = workflowCacheJSON[name] = workflowCacheJSON[name] || {};
+
+        workflowCacheJSON[this.name] = workflowCacheJSON[this.name] || {};
+        const data = workflowCacheJSON[this.name];
         data[key] = value;
     }
 
-    getCache(key: string): string | number | boolean | undefined {
+    /**
+     * 获取缓存
+     * @param key 缓存的键名
+     * @returns 缓存的值，可能为空
+     */
+    getCache(key: string): baseObject {
         if (!workflowCacheJSON) {
-            return;
+            return {};
         }
-        const name = this.getName();
-        const data = workflowCacheJSON[name] = workflowCacheJSON[name] || {};
-        return data[key];
+
+        workflowCacheJSON[this.name] = workflowCacheJSON[this.name] || {};
+        const data = workflowCacheJSON[this.name];
+        data[key] = data[key] || {};
+        const result = data[key];
+        return result;
     }
 
+    /**
+     * 获取缓存文件夹
+     * @returns 缓存文件夹的绝对地址
+     */
     getCacheDir() {
         return workflowCacheJSON.cacheDir;
     }
 
-    abstract getName(): string;
+    /**
+     * 获取任务标题
+     */
+    getTitle(): string {
+        return '';
+    }
 
-    abstract getTitle(): string;
+    /**
+     * 打印日志
+     * @param str
+     */
+    print(str: string) {
+        this.messages.push(str);
+    }
 
-    abstract execute(workspace: string, config: any): Promise<TaskState> | TaskState;
+    /**
+     * 执行任务
+     * @param workspace
+     * @param config
+     */
+    execute(workspace: string, config: any): Promise<TaskState> | TaskState {
+        return TaskState.unknown;
+    }
 }
 
-const TaskMap = new Map<string, Task>();
+const TaskMap = new Map<string, typeof Task>();
 
 /**
  * 初始化工作流
@@ -73,7 +134,8 @@ const TaskMap = new Map<string, Task>();
 export function initWorkflow(config: workflowConfig) {
     workflowOption = config;
     try {
-        workflowCacheJSON = require(config.cacheFile);
+        const str = readFileSync(config.cacheFile);
+        workflowCacheJSON = JSON.parse(str.toString());
     } catch (error) {
         workflowCacheJSON = {};
     }
@@ -100,54 +162,101 @@ export async function executeTask(taskNameList: string[]) {
         // 开始任务的分割线
         console.log(magenta(`${split} ${taskName} ${split}`));
 
-        const task = TaskMap.get(taskName);
-        if (!task) {
+        const CacheTask = TaskMap.get(taskName);
+        if (!CacheTask) {
             continue;
         }
-        const result = results[taskName] = results[taskName] || [];
+        const manager = new TaskManager({
+            name: `${taskName}`,
+            maxConcurrent: Task.getMaxConcurrent(),
+        });
+
+        results[taskName] = results[taskName] || [];
+        const result = results[taskName];
+        class ExecTask extends StructuresTask {
+            private workspace: string;
+
+            private entry: string;
+
+            private params: any;
+
+            private cacheFile: string;
+
+            private workflowCacheJSON: { [key: string]: any };
+
+            constructor(
+                workspace: string,
+                entry: string,
+                params: any,
+                cacheFile: string,
+                workflowCacheJSON: { [key: string]: any },
+            ) {
+                super();
+                this.workspace = workspace;
+                this.entry = entry;
+                this.params = params;
+                this.cacheFile = cacheFile;
+                this.workflowCacheJSON = workflowCacheJSON;
+            }
+
+            async handle() {
+                // 读取任务配置
+                let configMap;
+                try {
+                    const configFile = join(this.workspace, this.entry);
+                    configMap = await import(configFile);
+                } catch (error) {
+                    console.error(error);
+                }
+                const config = await configMap[taskName](this.params);
+
+                // 执行任务
+                const startTime = Date.now();
+                const task = new CacheTask!(taskName);
+                task.print(cyan(this.workspace));
+                try {
+                    const state = await task.execute(this.workspace, config);
+                    result.push(state);
+                } catch (error) {
+                    const err = error as Error;
+                    task.print(err.message);
+                    result.push(TaskState.error);
+                }
+                const endTime = Date.now();
+                task.print(dim(`Workspace task execution completed. ${formatTime(endTime - startTime)}`));
+
+                // 输出缓存的日志
+                task.messages.forEach((message) => {
+                    console.log(`  ${message}`);
+                });
+
+                // 每个小任务结束的时候，将配置重新写回文件
+                const dir = dirname(this.cacheFile);
+                await makeDir(dir);
+                writeFileSync(this.cacheFile, JSON.stringify(this.workflowCacheJSON, null, 2));
+            }
+        }
 
         // 循环执行每一个工作区
         for (const workspace of workflowOption.workspaces) {
-            // 读取任务配置
-            let configMap;
-            try {
-                const configFile = join(workspace, workflowOption!.entry);
-                configMap = require(configFile);
-            } catch (error) {
-                console.error(error);
-            }
-            const config = await configMap[taskName](workflowOption.params);
-            console.log(cyan(workspace));
-
-            const vendorLog = console.log;
-            console.log = function (...args) {
-                const type = typeof args[0];
-                if (type === 'string' || Buffer.isBuffer(args[0])) {
-                    args[0] = `  ${args[0]}`;
-                }
-                vendorLog.call(console, ...args);
-            };
-            // console.log(`  ▶ ${task.getTitle()}`);
-            // 执行任务
-            const startTime = Date.now();
-            try {
-                const state = await task.execute(workspace, config);
-                result.push(state);
-            } catch (error) {
-                console.error(error);
-                result.push(TaskState.error);
-            }
-            const endTime = Date.now();
-            console.log = vendorLog;
-
-            // 每个小任务结束的时候，将配置重新写回文件
-            const dir = dirname(workflowOption.cacheFile);
-            await makeDir(dir);
-            writeFileSync(workflowOption.cacheFile, JSON.stringify(workflowCacheJSON, null, 2));
+            const execTask = new ExecTask(
+                workspace,
+                workflowOption.entry,
+                workflowOption.params,
+                workflowOption.cacheFile,
+                workflowCacheJSON,
+            );
+            manager.push(execTask);
         }
 
-        const taskEndTime = Date.now();
-        console.log(magenta(`${split} ${taskName}(${formatTime(taskEndTime - taskStartTime)}) ${split}`));
+        await new Promise((resolve) => {
+            manager.start();
+            manager.addListener('finish', () => {
+                const taskEndTime = Date.now();
+                console.log(magenta(`${split} ${taskName}(${formatTime(taskEndTime - taskStartTime)}) ${split}`));
+                resolve(undefined);
+            });
+        });
     }
 
     return results;
@@ -158,7 +267,6 @@ export async function executeTask(taskNameList: string[]) {
  * @param taskName
  * @param handle
  */
-export function registerTask(taskClass: new () => Task) {
-    const task = new taskClass();
-    TaskMap.set(task.getName(), task);
+export function registerTask(name: string, TaskClass: typeof Task) {
+    TaskMap.set(name, TaskClass);
 }

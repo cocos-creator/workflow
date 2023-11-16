@@ -5,12 +5,20 @@ module.exports = {
     ],
     parser: '@typescript-eslint/parser',
     rules: {
-        indent: ['error', 4],
-        'no-unused-vars': 'off',
-        'no-restricted-syntax': 'off',
-        'no-await-in-loop': 'off',
         'import/extensions': 'off',
         'import/no-unresolved': 'off',
+
+        indent: ['error', 4],
+        'no-unused-vars': ['warn'],
+        'no-restricted-syntax': [
+            2,
+            'WithStatement',
+            'LabeledStatement',
+            'SwitchCase',
+        ],
+        'no-await-in-loop': 'off',
         'class-methods-use-this': 'off',
+        'no-continue': 'off',
+        'no-shadow': 'off',
     },
 };
