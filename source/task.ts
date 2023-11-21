@@ -160,7 +160,7 @@ export async function executeTask(taskNameList: string[]) {
     for (const taskName of taskNameList) {
         const taskStartTime = Date.now();
         // 开始任务的分割线
-        console.log(magenta(`${split} ${taskName} ${split}`));
+        console.log(magenta(`${split} ${taskName} ${split} Parallelism Count: ${Task.getMaxConcurrent()}`));
 
         const CacheTask = TaskMap.get(taskName);
         if (!CacheTask) {
@@ -253,7 +253,7 @@ export async function executeTask(taskNameList: string[]) {
             manager.start();
             manager.addListener('finish', () => {
                 const taskEndTime = Date.now();
-                console.log(magenta(`${split} ${taskName}(${formatTime(taskEndTime - taskStartTime)}) ${split}`));
+                console.log(magenta(`${split} ${taskName} ${split} Consumed Time: ${formatTime(taskEndTime - taskStartTime)}`));
                 resolve(undefined);
             });
         });

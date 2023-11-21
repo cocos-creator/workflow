@@ -3,7 +3,7 @@ import {
     MakeDirectoryOptions,
 } from 'fs';
 import { join } from 'path';
-import { spawn, SpawnOptionsWithoutStdio } from 'child_process';
+import { spawn, SpawnOptionsWithoutStdio, spawnSync } from 'child_process';
 
 /**
  * 循环传入的文件/文件夹里所有的文件/文件夹
@@ -51,6 +51,13 @@ export async function bash(
     handle?: (data: Buffer) => void,
 ) {
     return new Promise((resolve, reject) => {
+        if (process.platform === 'win32' && !cmd.endsWith('.cmd')) {
+            const str = spawnSync('where', [cmd], { stdio: 'inherit' }).toString();
+            if (str.includes('.cmd')) {
+                // eslint-disable-next-line no-param-reassign
+                cmd += '.cmd';
+            }
+        }
         if (options.cwd && !existsSync(options.cwd)) {
             mkdirSync(options.cwd);
         }

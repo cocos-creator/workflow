@@ -113,4 +113,65 @@ describe('task', () => {
             }, cacheJSON);
         });
     });
+
+    describe('less', () => {
+        const baseDir = join(__dirname, './task/workspace-less');
+        const PATH = {
+            cache: join(baseDir, './.dist/cache.json'),
+            result: join(baseDir, './.dist/result.json'),
+        };
+
+        before(() => {
+            spawnSync('node', [join(baseDir, './run.js')]);
+        });
+
+        it('检查缓存信息', async () => {
+            const cacheStr = readFileSync(PATH.cache, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            equal(true, !!cacheJSON.less);
+        });
+
+        it('检查运行结果', async () => {
+            const cacheStr = readFileSync(PATH.result, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            deepEqual({
+                less: ['success'],
+            }, cacheJSON);
+            equal(true, existsSync(join(baseDir, './.dist/test.css')));
+        });
+    });
+
+    describe('file', () => {
+        const baseDir = join(__dirname, './task/workspace-file');
+        const PATH = {
+            cache: join(baseDir, './.dist/cache.json'),
+            result: join(baseDir, './.dist/result.json'),
+        };
+
+        before(() => {
+            spawnSync('node', [join(baseDir, './run.js')]);
+        });
+
+        it('检查缓存信息', async () => {
+            const cacheStr = readFileSync(PATH.cache, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            equal(true, !!cacheJSON.file);
+        });
+
+        it('检查运行结果', async () => {
+            const cacheStr = readFileSync(PATH.result, 'utf8');
+            const cacheJSON = JSON.parse(cacheStr);
+            deepEqual({
+                file: ['success'],
+            }, cacheJSON);
+            equal(true, existsSync(join(baseDir, './.dist/test-1')));
+            equal(true, existsSync(join(baseDir, './.dist/test-1/a-dist')));
+            equal(true, existsSync(join(baseDir, './.dist/test-1/a-dist/a')));
+            equal(true, existsSync(join(baseDir, './.dist/test-1/b')));
+            equal(true, existsSync(join(baseDir, './.dist/test-2')));
+            equal(false, existsSync(join(baseDir, './.dist/test-2/a-dist')));
+            equal(false, existsSync(join(baseDir, './.dist/test-2/a-dist/a')));
+            equal(true, existsSync(join(baseDir, './.dist/test-2/b')));
+        });
+    });
 });

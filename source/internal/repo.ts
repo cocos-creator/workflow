@@ -1,4 +1,3 @@
-/* eslint-disable max-classes-per-file */
 import {
     join, isAbsolute, dirname, basename,
 } from 'node:path';
@@ -7,21 +6,13 @@ import {
     existsSync,
     mkdirSync,
     renameSync,
-    statSync,
 } from 'node:fs';
 
-import { yellow, green, italic } from 'chalk';
+import { yellow } from 'chalk';
 
-import { registerTask, Task, TaskState } from './task';
-import { bash } from './utils';
+import { registerTask, Task, TaskState } from '../task';
+import { bash, makeDir } from '../utils';
 
-const cmd = {
-    git: process.platform === 'win32' ? 'git' : 'git',
-    tsc: process.platform === 'win32' ? 'tsc.cmd' : 'tsc',
-    lessc: process.platform === 'win32' ? 'lessc.cmd' : 'lessc',
-};
-
-export type TscConfig = string[];
 type repoConfigItem = {
     // 远端仓库信息
     repo: {
@@ -45,83 +36,11 @@ type repoConfigItem = {
     hard: boolean;
     // 是否跳过这个仓库
     skip: boolean;
+
+    // 任务执行前的钩子
+    beforeExecute?: (config: repoConfigItem) => Promise<void>;
 };
 export type RepoConfig = repoConfigItem[];
-
-class TscTask extends Task {
-    getTitle() {
-        return 'Compile with tsc';
-    }
-
-    async execute(workspace: string, config: TscConfig): Promise<TaskState> {
-        let hasError = false;
-
-        for (const relativePath of config) {
-            // 将相对路径转成绝对路径
-            const path = isAbsolute(relativePath) ? relativePath : join(workspace, relativePath);
-
-            const dataItem = this.getCache(path);
-
-            // 新的缓存数据
-            const newDataItem: {
-                [key: string]: number;
-            } = {};
-
-            // 编译的文件是否有变化
-            let changed = false;
-
-            // 获取编译的文件列表
-            try {
-                const fileArray: string[] = [];
-                await bash('npx', [cmd.tsc, '--listFiles'], {
-                    cwd: path,
-                }, (data) => {
-                    data.toString().split(/\r|\n/).forEach((file) => {
-                        if (existsSync(file)) {
-                            fileArray.push(file);
-                        }
-                    });
-                });
-                this.print(`${italic(relativePath)} Compile files: ${green(fileArray.length)}`);
-
-                fileArray.forEach((file) => {
-                    const stat = statSync(file);
-                    const mtime = stat.mtime.getTime();
-                    if (!dataItem[file] || mtime !== dataItem[file]) {
-                        changed = true;
-                    }
-                    newDataItem[file] = mtime;
-                });
-            } catch (error) {
-                const err = error as Error;
-                this.print(err.message);
-                hasError = true;
-            }
-
-            // 没有变化
-            if (changed === false) {
-                continue;
-            }
-
-            // 有变化的时候，更新缓存
-            this.setCache(path, newDataItem);
-
-            // 实际编译
-            try {
-                await bash('npx', [cmd.tsc], {
-                    cwd: path,
-                });
-            } catch (error) {
-                const err = error as Error;
-                this.print(err.message);
-                hasError = true;
-            }
-        }
-
-        return hasError ? TaskState.error : TaskState.success;
-    }
-}
-registerTask('tsc', TscTask);
 
 export const RepoTaskMethods = {
     /**
@@ -132,7 +51,9 @@ export const RepoTaskMethods = {
      * @return {Promise<void>} A promise that resolves when the cloning is complete.
      */
     async clone(remote: string, path: string) {
-        await bash(cmd.git, ['clone', remote, basename(path)], {
+        const dir = basename(path);
+        await makeDir(dir);
+        await bash('git', ['clone', remote, dir], {
             cwd: dirname(path),
         });
     },
@@ -146,17 +67,17 @@ export const RepoTaskMethods = {
      */
     async updateRemote(name: string, remote: string, path: string) {
         try {
-            await bash(cmd.git, ['remote', 'add', name, remote], {
+            await bash('git', ['remote', 'add', name, remote], {
                 cwd: path,
             }, () => {});
 
-            await bash(cmd.git, ['remote', 'set-url', name, remote], {
+            await bash('git', ['remote', 'set-url', name, remote], {
                 cwd: path,
             }, () => {});
         } catch (error) { /** ignore */ }
     },
 };
-class RepoTask extends Task {
+export class RepoTask extends Task {
     getTitle() {
         return 'Synchronize the Git repository';
     }
@@ -170,6 +91,10 @@ class RepoTask extends Task {
             const path = isAbsolute(config.path) ? config.path : join(workspace, config.path);
             const bsd = dirname(path);
             const bsn = basename(path);
+
+            if (config.beforeExecute) {
+                await config.beforeExecute(config);
+            }
 
             task.print(yellow(`>> ${config.repo.url}`));
 
@@ -205,7 +130,7 @@ class RepoTask extends Task {
             // 同步远端
             let fetchError: Error | undefined;
             try {
-                const code = await bash(cmd.git, ['fetch', config.repo.name], {
+                const code = await bash('git', ['fetch', config.repo.name], {
                     cwd: path,
                 });
                 if (code !== 0) {
@@ -226,7 +151,7 @@ class RepoTask extends Task {
             // 获取远端 commit id
             if (config.repo.targetType === 'branch') {
                 try {
-                    await bash(cmd.git, ['rev-parse', `${config.repo.name}/${config.repo.targetValue}`], {
+                    await bash('git', ['rev-parse', `${config.repo.name}/${config.repo.targetValue}`], {
                         cwd: path,
                     }, (chunk) => {
                         const log = `${chunk}`;
@@ -240,7 +165,7 @@ class RepoTask extends Task {
                 }
             } else if (config.repo.targetType === 'tag') {
                 try {
-                    await bash(cmd.git, ['rev-parse', `tags/${config.repo.targetValue}`], {
+                    await bash('git', ['rev-parse', `tags/${config.repo.targetValue}`], {
                         cwd: path,
                     }, (chunk) => {
                         const log = `${chunk}`;
@@ -259,7 +184,7 @@ class RepoTask extends Task {
 
             // 获取本地 commit id
             try {
-                await bash(cmd.git, ['rev-parse', 'HEAD'], {
+                await bash('git', ['rev-parse', 'HEAD'], {
                     cwd: path,
                 }, (chunk) => {
                     const log = `${chunk}`;
@@ -283,7 +208,7 @@ class RepoTask extends Task {
 
             // 检查是否有修改
             let isDirty = false;
-            await bash(cmd.git, ['status', '-uno'], {
+            await bash('git', ['status', '-uno'], {
                 cwd: path,
             }, (chunk) => {
                 const info = `${chunk}`;
@@ -298,7 +223,7 @@ class RepoTask extends Task {
                 }
                 task.print('Repository has modifications, stash changes');
                 try {
-                    await bash(cmd.git, ['stash'], {
+                    await bash('git', ['stash'], {
                         cwd: path,
                     });
                 } catch (error) {
@@ -312,7 +237,7 @@ class RepoTask extends Task {
             // 检查当前分支
             let isEditorBranch = false;
             try {
-                await bash(cmd.git, ['branch', '--show-current'], {
+                await bash('git', ['branch', '--show-current'], {
                     cwd: path,
                 }, (chunk) => {
                     const log = `${chunk}`;
@@ -332,21 +257,21 @@ class RepoTask extends Task {
             }
             try {
                 // 从当前位置切出分支，如果有则忽略
-                await bash(cmd.git, ['checkout', '-b', config.repo.local], {
+                await bash('git', ['checkout', '-b', config.repo.local], {
                     cwd: path,
                 }, () => {});
             } catch (error) { /** ignore */ }
 
             try {
                 // 从当前位置切出分支，如果有则忽略
-                await bash(cmd.git, ['checkout', config.repo.local], {
+                await bash('git', ['checkout', config.repo.local], {
                     cwd: path,
                 }, () => {});
             } catch (error) { /** ignore */ }
 
             try {
                 let info = '';
-                await bash(cmd.git, ['reset', '--hard', remoteID], {
+                await bash('git', ['reset', '--hard', remoteID], {
                     cwd: path,
                 }, (chunk) => {
                     info += chunk;
