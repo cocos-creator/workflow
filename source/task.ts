@@ -1,6 +1,6 @@
 /* eslint-disable max-classes-per-file */
-import { join, dirname } from 'node:path';
-import { writeFileSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'path';
+import { writeFileSync, readFileSync } from 'fs';
 
 import { magenta, cyan, dim } from 'chalk';
 import {
@@ -253,7 +253,7 @@ export async function executeTask(taskNameList: string[]) {
             manager.start();
             manager.addListener('finish', () => {
                 const taskEndTime = Date.now();
-                console.log(magenta(`${split} ${taskName} ${split} Consumed Time: ${formatTime(taskEndTime - taskStartTime)}`));
+                console.log(dim(`${split} ${taskName} ${split} Consumed Time: ${formatTime(taskEndTime - taskStartTime)}`));
                 resolve(undefined);
             });
         });

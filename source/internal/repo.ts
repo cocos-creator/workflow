@@ -1,12 +1,12 @@
 import {
     join, isAbsolute, dirname, basename,
-} from 'node:path';
+} from 'path';
 
 import {
     existsSync,
     mkdirSync,
     renameSync,
-} from 'node:fs';
+} from 'fs';
 
 import { yellow } from 'chalk';
 

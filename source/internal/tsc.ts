@@ -1,12 +1,12 @@
 import {
     join, isAbsolute,
-} from 'node:path';
+} from 'path';
 
 import {
     existsSync,
     statSync,
-} from 'node:fs';
-import { cpus } from 'node:os';
+} from 'fs';
+import { cpus } from 'os';
 
 import { green, italic } from 'chalk';
 

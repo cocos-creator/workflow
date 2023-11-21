@@ -1,11 +1,11 @@
 import {
     join,
     isAbsolute,
-} from 'node:path';
+} from 'path';
 import {
     createWriteStream,
     WriteStream,
-} from 'node:fs';
+} from 'fs';
 
 import { italic } from 'chalk';
 

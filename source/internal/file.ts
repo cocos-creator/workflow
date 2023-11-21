@@ -2,13 +2,13 @@ import {
     join,
     isAbsolute,
     relative,
-} from 'node:path';
+} from 'path';
 import {
     existsSync,
     statSync,
     Stats,
     copyFileSync,
-} from 'node:fs';
+} from 'fs';
 
 import { green, italic } from 'chalk';
 
