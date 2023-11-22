@@ -2,7 +2,7 @@
 import { join, dirname } from 'path';
 import { writeFileSync, readFileSync } from 'fs';
 
-import { magenta, cyan, dim } from 'chalk';
+import { magenta, cyan, gray } from 'chalk';
 import {
     TaskManager,
     Task as StructuresTask,
@@ -223,7 +223,7 @@ export async function executeTask(taskNameList: string[]) {
                     result.push(TaskState.error);
                 }
                 const endTime = Date.now();
-                task.print(dim(`Workspace task execution completed. ${formatTime(endTime - startTime)}`));
+                task.print(gray(`Workspace execution completed. ${formatTime(endTime - startTime)}`));
 
                 // 输出缓存的日志
                 task.messages.forEach((message) => {
@@ -253,7 +253,7 @@ export async function executeTask(taskNameList: string[]) {
             manager.start();
             manager.addListener('finish', () => {
                 const taskEndTime = Date.now();
-                console.log(dim(`${split} ${taskName} ${split} Consumed Time: ${formatTime(taskEndTime - taskStartTime)}`));
+                console.log(gray(`The "${taskName}" task is completed in ${formatTime(taskEndTime - taskStartTime)}`));
                 resolve(undefined);
             });
         });

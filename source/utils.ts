@@ -52,7 +52,7 @@ export async function bash(
 ) {
     return new Promise((resolve, reject) => {
         if (process.platform === 'win32' && !cmd.endsWith('.cmd')) {
-            const str = spawnSync('where', [cmd], { stdio: 'inherit' }).toString();
+            const str = spawnSync('where', [cmd]).stdout.toString();
             if (str.includes('.cmd')) {
                 // eslint-disable-next-line no-param-reassign
                 cmd += '.cmd';
