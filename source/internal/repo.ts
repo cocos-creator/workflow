@@ -6,7 +6,7 @@ import {
     existsSync,
     mkdirSync,
     renameSync,
-} from 'fs';
+} from 'fs-extra';
 
 import { yellow } from 'chalk';
 
@@ -55,6 +55,8 @@ export const RepoTaskMethods = {
         await makeDir(dir);
         await bash('git', ['clone', remote, dir], {
             cwd: dirname(path),
+            // @ts-ignore
+            stdio: 'inherit',
         });
     },
 
@@ -78,6 +80,10 @@ export const RepoTaskMethods = {
     },
 };
 export class RepoTask extends Task {
+    static getMaxConcurrent() {
+        return 1;
+    }
+
     getTitle() {
         return 'Synchronize the Git repository';
     }
@@ -289,8 +295,10 @@ export class RepoTask extends Task {
             return TaskState.success;
         }
 
+        task.outputLog();
         for (const repoConfig of repoConfigArray) {
             await checkoutRepo(repoConfig);
+            task.outputLog();
         }
 
         return err ? TaskState.error : TaskState.success;

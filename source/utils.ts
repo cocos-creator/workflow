@@ -84,7 +84,7 @@ export async function bash(
             if (code === 0) {
                 resolve(code);
             } else {
-                reject();
+                reject(new Error('Exit code not equal to 0'));
             }
         });
         child.on('error', (error) => {

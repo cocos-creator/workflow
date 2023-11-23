@@ -89,6 +89,8 @@ export class LessTask extends Task {
             try {
                 await bash('npx', ['lessc', config.source, config.dist], {
                     cwd: workspace,
+                }, (chunk) => {
+                    this.print(chunk.toString());
                 });
 
                 // 有变化的时候，更新缓存

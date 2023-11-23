@@ -8,7 +8,7 @@ import {
 } from 'fs';
 import { cpus } from 'os';
 
-import { green, italic } from 'chalk';
+import { green, italic, yellow } from 'chalk';
 
 import { registerTask, Task, TaskState } from '../task';
 import { bash } from '../utils';
@@ -42,8 +42,8 @@ export class TscTask extends Task {
             let changed = false;
 
             // 获取编译的文件列表
+            const fileArray: string[] = [];
             try {
-                const fileArray: string[] = [];
                 await bash('npx', ['tsc', '--listFiles'], {
                     cwd: path,
                 }, (data) => {
@@ -53,7 +53,6 @@ export class TscTask extends Task {
                         }
                     });
                 });
-                this.print(`${italic(relativePath)} Compile files: ${green(fileArray.length)}`);
 
                 fileArray.forEach((file) => {
                     const stat = statSync(file);
@@ -67,17 +66,24 @@ export class TscTask extends Task {
                 const err = error as Error;
                 this.print(err.message);
                 hasError = true;
+                changed = true;
             }
+
+            const fileCount = fileArray.length.toString().padStart(4, ' ');
 
             // 没有变化
             if (changed === false) {
+                this.print(`[${yellow('Cache  ')}]${fileCount} ${italic(relativePath)}`);
                 continue;
             }
+            this.print(`[${green('Compile')}]${fileCount} ${italic(relativePath)}`);
 
             // 实际编译
             try {
                 await bash('npx', ['tsc'], {
                     cwd: path,
+                }, (chunk) => {
+                    this.print(chunk.toString());
                 });
 
                 // 有变化的时候，更新缓存

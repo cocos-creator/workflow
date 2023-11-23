@@ -7,7 +7,7 @@ import {
     WriteStream,
 } from 'fs';
 
-import { italic } from 'chalk';
+import { gray } from 'chalk';
 
 import { registerTask, Task, TaskState } from '../task';
 import { bash } from '../utils';
@@ -25,7 +25,7 @@ export type NPMConfig = {
     logFile?: string,
 }[];
 
-export class FileTask extends Task {
+export class NPMTask extends Task {
     static getMaxConcurrent() {
         return 1;
     }
@@ -43,13 +43,15 @@ export class FileTask extends Task {
                 ? config.path
                 : join(workspace, config.path);
 
-            this.print(italic(`npm ${config.params.join(' ')}`));
             if (config.message) {
-                this.print(italic(config.message));
+                this.print(`npm ${config.params.join(' ')} - ${config.message}`);
+            } else {
+                this.print(`npm ${config.params.join(' ')}`);
             }
-            this.print(`Execution Path: ${config.path}`);
+
+            this.print(gray(`Execution Path: ${config.path}`));
             if (config.logFile) {
-                this.print(`Log file: ${config.logFile}`);
+                this.print(gray(`Log file: ${config.logFile}`));
             }
 
             // 执行命令
@@ -60,6 +62,8 @@ export class FileTask extends Task {
                 }
                 await bash('npm', config.params, {
                     cwd: source,
+                    // @ts-ignore
+                    stdio: writeStream ? undefined : 'inherit',
                 }, (data) => {
                     if (writeStream) {
                         writeStream.write(data.toString());
@@ -80,4 +84,4 @@ export class FileTask extends Task {
         return hasError ? TaskState.error : TaskState.success;
     }
 }
-registerTask('file', FileTask);
+registerTask('npm', NPMTask);

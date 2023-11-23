@@ -1,8 +1,15 @@
 /* eslint-disable max-classes-per-file */
 import { join, dirname } from 'path';
-import { writeFileSync, readFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 
-import { magenta, cyan, gray } from 'chalk';
+import {
+    magenta,
+    cyan,
+    gray,
+    green,
+    yellow,
+    red,
+} from 'chalk';
 import {
     TaskManager,
     Task as StructuresTask,
@@ -46,7 +53,11 @@ export class Task {
     // 任务名称
     protected name: string;
 
+    // 任务执行的消息
     public messages: string[] = [];
+
+    // 日志前缀
+    public prefix = '';
 
     constructor(name: string) {
         this.name = name;
@@ -97,7 +108,7 @@ export class Task {
      * @returns 缓存文件夹的绝对地址
      */
     getCacheDir() {
-        return workflowCacheJSON.cacheDir;
+        return workflowOption?.cacheDir;
     }
 
     /**
@@ -112,7 +123,13 @@ export class Task {
      * @param str
      */
     print(str: string) {
-        this.messages.push(str);
+        const concurrent = (this.constructor as unknown as typeof Task).getMaxConcurrent();
+        const message = `${this.prefix}${str}`;
+        if (concurrent === 1) {
+            console.log(message);
+        } else {
+            this.messages.push(message);
+        }
     }
 
     /**
@@ -122,6 +139,16 @@ export class Task {
      */
     execute(workspace: string, config: any): Promise<TaskState> | TaskState {
         return TaskState.unknown;
+    }
+
+    /**
+     * 输出日志
+     */
+    outputLog() {
+        this.messages.forEach((message) => {
+            console.log(`  ${message}`);
+        });
+        this.messages.length = 0;
     }
 }
 
@@ -160,15 +187,16 @@ export async function executeTask(taskNameList: string[]) {
     for (const taskName of taskNameList) {
         const taskStartTime = Date.now();
         // 开始任务的分割线
-        console.log(magenta(`${split} ${taskName} ${split} Parallelism Count: ${Task.getMaxConcurrent()}`));
 
         const CacheTask = TaskMap.get(taskName);
         if (!CacheTask) {
             continue;
         }
+        const maxConcurrent = CacheTask.getMaxConcurrent();
+        console.log(magenta(`${split} ${taskName} ${split} Parallelism Count: ${maxConcurrent}`));
         const manager = new TaskManager({
             name: `${taskName}`,
-            maxConcurrent: Task.getMaxConcurrent(),
+            maxConcurrent,
         });
 
         results[taskName] = results[taskName] || [];
@@ -200,40 +228,86 @@ export async function executeTask(taskNameList: string[]) {
             }
 
             async handle() {
+                let state = TaskState.unknown;
+
                 // 读取任务配置
                 let configMap;
-                try {
-                    const configFile = join(this.workspace, this.entry);
-                    configMap = await import(configFile);
-                } catch (error) {
-                    console.error(error);
+                const configFile = join(this.workspace, this.entry);
+                if (!existsSync(configFile)) {
+                    state = TaskState.skip;
                 }
-                const config = await configMap[taskName](this.params);
 
-                // 执行任务
-                const startTime = Date.now();
+                if (state === TaskState.unknown) {
+                    try {
+                        configMap = await import(configFile);
+                    } catch (error) {
+                        console.error(error);
+                        state = TaskState.error;
+                    }
+                }
+
+                if (state === TaskState.unknown) {
+                    if (!configMap[taskName]) {
+                        state = TaskState.skip;
+                    }
+                }
+
                 const task = new CacheTask!(taskName);
                 task.print(cyan(this.workspace));
-                try {
-                    const state = await task.execute(this.workspace, config);
-                    result.push(state);
-                } catch (error) {
-                    const err = error as Error;
-                    task.print(err.message);
-                    result.push(TaskState.error);
+                task.prefix = '  ';
+                const startTime = Date.now();
+                if (state === TaskState.unknown) {
+                    try {
+                        const config = await configMap[taskName](this.params);
+
+                        // 执行任务
+                        try {
+                            const execState = await task.execute(this.workspace, config);
+                            state = execState;
+                        } catch (error) {
+                            const err = error as Error;
+                            task.print(err.message);
+                            state = TaskState.error;
+                        }
+
+                        // 每个小任务结束的时候，将配置重新写回文件
+                        const dir = dirname(this.cacheFile);
+                        await makeDir(dir);
+                        writeFileSync(
+                            this.cacheFile,
+                            JSON.stringify(this.workflowCacheJSON, null, 2),
+                        );
+                    } catch (error) {
+                        const err = error as Error;
+                        console.error(err.message);
+                        result.push(TaskState.error);
+                    }
                 }
                 const endTime = Date.now();
-                task.print(gray(`Workspace execution completed. ${formatTime(endTime - startTime)}`));
-
+                let message = `${formatTime(endTime - startTime)} `;
+                switch (state) {
+                // eslint-disable-next-line no-restricted-syntax
+                case TaskState.success:
+                    message += green('Success');
+                    break;
+                // eslint-disable-next-line no-restricted-syntax
+                case TaskState.skip:
+                    message += yellow('Skip');
+                    break;
+                // eslint-disable-next-line no-restricted-syntax
+                case TaskState.error:
+                    message += red('Error');
+                    break;
+                // eslint-disable-next-line no-restricted-syntax
+                default:
+                    message += gray('Unknown');
+                    break;
+                }
+                task.prefix = '';
+                task.print(message);
                 // 输出缓存的日志
-                task.messages.forEach((message) => {
-                    console.log(`  ${message}`);
-                });
-
-                // 每个小任务结束的时候，将配置重新写回文件
-                const dir = dirname(this.cacheFile);
-                await makeDir(dir);
-                writeFileSync(this.cacheFile, JSON.stringify(this.workflowCacheJSON, null, 2));
+                task.outputLog();
+                result.push(state);
             }
         }
 
