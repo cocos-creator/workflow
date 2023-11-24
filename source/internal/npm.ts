@@ -1,11 +1,13 @@
 import {
     join,
+    dirname,
     isAbsolute,
 } from 'path';
 import {
     createWriteStream,
     WriteStream,
-} from 'fs';
+    ensureDir,
+} from 'fs-extra';
 
 import { gray } from 'chalk';
 
@@ -58,6 +60,7 @@ export class NPMTask extends Task {
             try {
                 let writeStream: WriteStream | undefined;
                 if (config.logFile) {
+                    await ensureDir(dirname(config.logFile));
                     writeStream = createWriteStream(config.logFile, { flags: 'a' });
                 }
                 await bash('npm', config.params, {
