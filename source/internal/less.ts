@@ -7,7 +7,7 @@ import {
 } from 'fs';
 import { cpus } from 'os';
 
-import { green, italic } from 'chalk';
+import { green, italic, yellow } from 'chalk';
 
 import { registerTask, Task, TaskState } from '../task';
 import { bash } from '../utils';
@@ -45,10 +45,10 @@ export class LessTask extends Task {
             let changed = false;
 
             // 获取编译的文件列表
+            const fileArray: string[] = [
+                path,
+            ];
             try {
-                const fileArray: string[] = [
-                    path,
-                ];
                 const out = './.less.cache.json';
                 await bash('npx', ['lessc', '--depends', config.source, out], {
                     cwd: workspace,
@@ -64,7 +64,6 @@ export class LessTask extends Task {
                         }
                     });
                 });
-                this.print(`${italic(config.source)} Compile files: ${green(fileArray.length)}`);
 
                 fileArray.forEach((file) => {
                     const stat = statSync(file);
@@ -80,10 +79,16 @@ export class LessTask extends Task {
                 hasError = true;
             }
 
+            if (!existsSync(config.dist)) {
+                changed = true;
+            }
+
             // 没有变化
             if (changed === false) {
+                this.print(`${italic(config.source)} Cache files: ${yellow(fileArray.length)}`);
                 continue;
             }
+            this.print(`${italic(config.source)} Compile files: ${green(fileArray.length)}`);
 
             // 实际编译
             try {

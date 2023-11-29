@@ -1,6 +1,6 @@
 {
   "name": "@itharbors/workflow",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "",
   "main": "./dist/index.js",
   "scripts": {
@@ -26,11 +26,9 @@
     "@itharbors/structures": "^1.0.2",
     "@types/download": "^8.0.5",
     "@types/fs-extra": "^11.0.4",
-    "@types/graceful-fs": "^4.1.9",
     "chalk": "^4.1.2",
     "download": "^8.0.0",
     "fs-extra": "^11.1.1",
-    "graceful-fs": "^4.2.11",
     "v-unzip": "^1.1.0",
     "workflow-extra": "^0.2.7"
   }

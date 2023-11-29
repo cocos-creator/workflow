@@ -1,15 +1,10 @@
 import {
     join,
     isAbsolute,
-    relative,
 } from 'path';
 import {
-    existsSync,
-    statSync,
-    Stats,
-    copyFileSync,
-} from 'fs';
-import { rmSync } from 'graceful-fs';
+    remove,
+} from 'fs-extra';
 
 import { italic } from 'chalk';
 
@@ -38,7 +33,7 @@ export class RemoveTask extends Task {
             this.print(italic(`Remove files in ${source}`));
 
             try {
-                rmSync(source, { recursive: true, force: true });
+                await remove(source);
             } catch (error) {
                 const err = error as Error;
                 this.print(err.message);
