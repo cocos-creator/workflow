@@ -257,13 +257,16 @@ export async function executeTask(taskNameList: string[]) {
                 task.prefix = '  ';
                 const startTime = Date.now();
                 if (state === TaskState.unknown) {
+                    state = TaskState.success;
                     try {
                         const config = await configMap[taskName](this.params);
 
                         // 执行任务
                         try {
                             const execState = await task.execute(this.workspace, config);
-                            state = execState;
+                            if (execState !== TaskState.success) {
+                                state = execState;
+                            }
                         } catch (error) {
                             const err = error as Error;
                             task.print(err.message);
