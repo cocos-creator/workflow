@@ -7,6 +7,7 @@ import {
     createWriteStream,
     WriteStream,
     ensureDir,
+    writeFile,
 } from 'fs-extra';
 
 import { gray } from 'chalk';
@@ -58,10 +59,14 @@ export class NPMTask extends Task {
 
             // 执行命令
             try {
-                let writeStream: WriteStream | undefined;
+                // 清空日志文件
                 if (config.logFile) {
                     await ensureDir(dirname(config.logFile));
-                    writeStream = createWriteStream(config.logFile, { flags: 'a' });
+                    await createWriteStream(config.logFile, { flags: 'w' }).close();
+                }
+                let writeStream: WriteStream | undefined;
+                if (config.logFile) {
+                    await writeFile(config.logFile, '');
                 }
                 await bash('npm', config.params, {
                     cwd: source,
