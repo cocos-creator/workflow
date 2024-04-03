@@ -14,7 +14,7 @@ initWorkflow({
             {
                 repo: {
                     name: '_test_origin_',
-                    url: 'git@github.com:itharbors/workflow.git',
+                    url: 'https://github.com/itharbors/workflow.git',
                     local: '_test_branch_',
 
                     targetType: 'branch',
