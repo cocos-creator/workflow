@@ -330,7 +330,7 @@ export async function executeTask(taskNameList: string[]) {
             manager.start();
             manager.addListener('finish', () => {
                 const taskEndTime = Date.now();
-                console.log(gray(`The "${taskName}" task is completed in ${formatTime(taskEndTime - taskStartTime)}`));
+                console.log(gray(`The "${taskName}" task is completed in ${formatTime(taskEndTime - taskStartTime)} ${taskEndTime.toLocaleString()}`));
                 resolve(undefined);
             });
         });
