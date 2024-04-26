@@ -1,9 +1,9 @@
 # 模块设计文档: 工作流管理
 
-工作流调度小工具。通过项目配置，触发指定的任务，用于简化较为复杂的工程内初始化或者编译等流程
-
 [![NPM](https://img.shields.io/npm/v/@itharbors/workflow)](https://www.npmjs.com/package/@itharbors/workflow)
 [![CI Status](https://github.com/itharbors/workflow/actions/workflows/ci.yaml/badge.svg)](https://github.com/itharbors/workflow/actions/workflows/ci.yaml)
+
+工作流调度小工具。通过项目配置，触发指定的任务，用于简化较为复杂的工程内初始化或者编译等流程
 
 Workflow 将项目工作流分成了 workspace（工作区）和 task（任务）两个概念
 
@@ -104,9 +104,12 @@ registerTask(TestTask);
 
 ## 决策点
 
-- [~~关键决策~~]
-    - [~~影响设计方向的重要决策及其理由~~]
-- ...
+- 一个工作流一个配置
+    - 在不同的工作流命令内，可能要调用同一个任务
+    - 工作流互相隔离，防止修改影响其他工作流任务
+
+- 先循环任务，再循环工作区
+    - 执行 `build` 工作流的时候，可能要先将所有仓库的文件拷贝到指定位置，然后再执行 `tsc` 编译，所以需要按照任务将所有工作区一起处理 
 
 ## 异常处理设计
 
