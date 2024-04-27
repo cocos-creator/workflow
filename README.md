@@ -5,7 +5,7 @@
 
 工作流调度小工具。通过项目配置，触发指定的任务，用于简化较为复杂的工程内初始化或者编译等流程
 
-Workflow 将项目工作流分成了 workspace（工作区）和 task（任务）两个概念
+Workflow 将项目工作流分成了 task（任务）和 workspace（工作区）两个概念
 
 每个工作区相当于一个需要处理的工程目录。而任务则是实际执行的动作。Workflow 会在执行每个任务的时候，循环所有工作区，在所有工作区内拿到对应的配置信息，根据这些配置信息去执行对应的任务
 
@@ -13,8 +13,11 @@ Workflow 将项目工作流分成了 workspace（工作区）和 task（任务�
 
 ### 功能需求
 
-- 自定义任务
-- 每个工作区执行不同的任务
+- 完成工作流调度
+    - 例如 `build` 工作流，通常包含编译多种文件：ts、less、c++ 等
+- 内置常用任务
+- 支持自定义任务
+- 每个工作区允许执行不同的任务
 
 ### 非功能需求
 
@@ -27,19 +30,29 @@ Workflow 将项目工作流分成了 workspace（工作区）和 task（任务�
 开始工作流的时候先循环需要执行的任务列表，在执行每个任务的时候，再去循环每一个工作区。根据工作区内的配置文件区执行对应的任务
 
 ```mermaid
-graph TD;
-    A010[开始工作流]
-    A021[循环需要执行的任务]
-    A031[循环所有工作区]
-    A032[读取工作区内当前任务的配置文件]
-    A033[根据配置执行任务]
-    A090[结束工作流]
+sequenceDiagram
+    actor       U  as User
+    participant W  as Workflow
+    participant TT as TscTask
+    participant LT as LesscTask
+    participant WA as WorkspaceA
+    participant WB as WorkspaceB
 
-    A010 --> A021
-    A021 -->|有未处理的任务| A031
-    A021 -->|没有未处理的任务| A090
-    A031 -->|有未处理的工作区| A032 --> A033 --> A031
-    A031 -->|没有未处理的工作区| A021
+    U   ->> W           : 启动工作流 `build`
+
+    W   ->> TT          : 开始 TscTask
+    TT  ->> WA          : 执行 TscTask
+    WA -->> TT          : 收集执行结果
+    TT  ->> WB          : 执行 TscTask
+    WB -->> TT          : 收集执行结果
+    TT -->> W           : 结束 TscTask，返回执行结果
+
+    W   ->> LT          : 开始 LesscTask
+    LT  ->> WA          : 执行 LesscTask
+    WA -->> LT          : 收集执行结果
+    LT  ->> WB          : 执行 LesscTask
+    WB -->> LT          : 收集执行结果
+    LT -->> W           : 结束 LesscTask，返回执行结果
 ```
 
 ## 代码范例
@@ -48,6 +61,7 @@ graph TD;
 
 先初始化工作流的一些基本配置，然后开始执行
 
+build.js
 ```ts
 import { join } from 'path';
 import { initWorkflow, executeTask } from '@itharbors/workflow';
@@ -81,6 +95,29 @@ for (const taskName in results) {
 }
 ```
 
+.build.config.js
+
+文件里的配置格式，请看 source/internal 内各个任务的定义
+
+```js
+exports.remove = function() {
+    return ['./dist'];
+};
+exports.npm = function() {
+    return [{
+        message: '安装依赖',
+        path: './',
+        params: ['install'],
+        detail: '依赖安装失败，请检查网络和配置',
+    }];
+};
+exports.tsc = function() {
+    return ['./'];
+};
+```
+
+### 配置文件
+
 ### 注册自定义任务
 
 ```ts
@@ -109,7 +146,10 @@ registerTask(TestTask);
     - 工作流互相隔离，防止修改影响其他工作流任务
 
 - 先循环任务，再循环工作区
-    - 执行 `build` 工作流的时候，可能要先将所有仓库的文件拷贝到指定位置，然后再执行 `tsc` 编译，所以需要按照任务将所有工作区一起处理 
+    - 执行 `build` 工作流的时候，可能要先将所有仓库的文件拷贝到指定位置，然后再执行 `tsc` 编译，所以需要按照任务将所有工作区一起处理
+
+- 不管任务是否成功，都先执行任务
+    - 一个工作流里一般有很多任务和工作区，如果全都是遇到错误就停止，就会出现我们修复了一个问题后，才能看到下一个问题的情况
 
 ## 异常处理设计
 
@@ -127,7 +167,8 @@ registerTask(TestTask);
 
 ## 性能优化
 
-- 在注册任务的时候提供并行配制，允许部分并行
+- 并行任务
+    - 在注册任务的时候提供并行配制，允许部分并行
 
 ## 附件与参考文档
 

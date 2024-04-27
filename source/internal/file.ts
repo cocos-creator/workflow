@@ -16,8 +16,11 @@ import { registerTask, Task, TaskState } from '../task';
 import { forEachFiles, makeDir } from '../utils';
 
 export type FileConfig = {
+    // 源文件，支持相对、绝对路径
     source: string;
+    // 源文件，支持相对、绝对路径
     dist: string;
+    // 过滤函数，当返回 false 的时候则不复制，复制文件夹的时候使用
     filter(file: string, stat: Stats): boolean;
 }[];
 

@@ -10,6 +10,7 @@ import { italic } from 'chalk';
 
 import { registerTask, Task, TaskState } from '../task';
 
+// 删除的文件路径，支持相对、绝对路径
 export type RemoveConfig = string[];
 
 export class RemoveTask extends Task {

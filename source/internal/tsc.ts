@@ -13,6 +13,7 @@ import { green, italic, yellow } from 'chalk';
 import { registerTask, Task, TaskState } from '../task';
 import { bash } from '../utils';
 
+// 需要执行 tsc 的文件夹位置，支持相对、绝对路径
 export type TscConfig = string[];
 
 export class TscTask extends Task {

@@ -12,7 +12,9 @@ import { italic } from 'chalk';
 import { registerTask, Task, TaskState } from '../task';
 
 export type ChmodConfig = {
+    // 文件路径，支持相对、绝对路径
     source: string;
+    // 权限 （111 111 111）
     mode: number;
 }[];
 

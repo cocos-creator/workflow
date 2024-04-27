@@ -13,7 +13,9 @@ import { registerTask, Task, TaskState } from '../task';
 import { bash } from '../utils';
 
 export type LessConfig = {
+    // less 文件，支持相对、绝对路径
     source: string;
+    // 生成的 css 文件，支持相对、绝对路径
     dist: string;
     compress: boolean;
 }[];

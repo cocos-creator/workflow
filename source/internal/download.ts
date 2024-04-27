@@ -20,8 +20,11 @@ import { registerTask, Task, TaskState } from '../task';
 import { makeDir } from '../utils';
 
 export type DownloadConfig = {
+    // url 地址
     url: string;
+    // 下载的位置
     dist: string;
+    // 下载结束后的回调函数
     callback?: () => void,
 }[];
 
