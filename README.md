@@ -69,7 +69,10 @@ import { initWorkflow, executeTask } from '@itharbors/workflow';
 // 初始化工作流
 initWorkflow({
     entry: '.build.config.js',
-    params: argv,
+    params: {
+        argv: process.argv,
+        test: 'a',
+    },
     cache: join(__dirname, '../../.temp/.cache-build.json'),
     cacheDir: join(__dirname, '../../.temp'),
     workspaces: [
@@ -100,10 +103,12 @@ for (const taskName in results) {
 文件里的配置格式，请看 source/internal 内各个任务的定义
 
 ```js
-exports.remove = function() {
+// params 是 initWorkflow 时传入的那个 params
+// 主要用于项目内控制部分流程，比如构建的时候只构建脚本、只构建样式等功能
+exports.remove = function(params) {
     return ['./dist'];
 };
-exports.npm = function() {
+exports.npm = function(params) {
     return [{
         message: '安装依赖',
         path: './',
@@ -111,7 +116,7 @@ exports.npm = function() {
         detail: '依赖安装失败，请检查网络和配置',
     }];
 };
-exports.tsc = function() {
+exports.tsc = function(params) {
     return ['./'];
 };
 ```
