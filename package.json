@@ -1,6 +1,6 @@
 {
-  "name": "@itharbors/workflow",
-  "version": "0.2.7",
+  "name": "@creator/workflow",
+  "version": "0.2.8",
   "description": "",
   "main": "./dist/index.js",
   "scripts": {

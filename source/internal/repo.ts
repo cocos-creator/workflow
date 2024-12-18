@@ -89,7 +89,6 @@ export class RepoTask extends Task {
     }
 
     async execute(workspace: string, repoConfigArray: RepoConfig): Promise<TaskState> {
-        const err = false;
         const task = this;
 
         async function checkoutRepo(config: repoConfigItem): Promise<TaskState> {
@@ -296,12 +295,13 @@ export class RepoTask extends Task {
         }
 
         task.outputLog();
+        let rets:TaskState[] = [];
         for (const repoConfig of repoConfigArray) {
-            await checkoutRepo(repoConfig);
+            rets.push(await checkoutRepo(repoConfig));
             task.outputLog();
         }
 
-        return err ? TaskState.error : TaskState.success;
+        return rets.includes(TaskState.error) ? TaskState.error : TaskState.success;
     }
 }
 registerTask('repo', RepoTask);
