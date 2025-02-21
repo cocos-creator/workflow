@@ -120,7 +120,7 @@ export class RepoTask extends Task {
             }
 
             if (!existsSync(bsd)) {
-                mkdirSync(bsd);
+                mkdirSync(bsd, { recursive: true });
             }
 
             // 如果文件夹不存在，直接 clone 远端
