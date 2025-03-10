@@ -71,11 +71,11 @@ export const RepoTaskMethods = {
         try {
             await bash('git', ['remote', 'add', name, remote], {
                 cwd: path,
-            }, () => {});
+            }, () => { });
 
             await bash('git', ['remote', 'set-url', name, remote], {
                 cwd: path,
-            }, () => {});
+            }, () => { });
         } catch (error) { /** ignore */ }
     },
 };
@@ -182,6 +182,20 @@ export class RepoTask extends Task {
                     task.print(err.message);
                     return TaskState.error;
                 }
+            } else if (config.repo.targetType === 'commit') {
+                try {
+                    await bash('git', ['rev-parse', config.repo.targetValue], {
+                        cwd: path,
+                    }, (chunk) => {
+                        const log = `${chunk}`;
+                        remoteID = log.replace(/\n/g, '').trim();
+                    });
+                } catch (error) {
+                    const err = error as Error;
+                    task.print('Failed to fetch remote commit [ git rev-parse commit ]');
+                    task.print(err.message);
+                    return TaskState.error;
+                }
             } else {
                 task.print('Failed to fetch remote commit [ No branch or tag configured ]');
                 return TaskState.error;
@@ -264,14 +278,14 @@ export class RepoTask extends Task {
                 // 从当前位置切出分支，如果有则忽略
                 await bash('git', ['checkout', '-b', config.repo.local], {
                     cwd: path,
-                }, () => {});
+                }, () => { });
             } catch (error) { /** ignore */ }
 
             try {
                 // 从当前位置切出分支，如果有则忽略
                 await bash('git', ['checkout', config.repo.local], {
                     cwd: path,
-                }, () => {});
+                }, () => { });
             } catch (error) { /** ignore */ }
 
             try {
@@ -295,7 +309,7 @@ export class RepoTask extends Task {
         }
 
         task.outputLog();
-        let rets:TaskState[] = [];
+        let rets: TaskState[] = [];
         for (const repoConfig of repoConfigArray) {
             rets.push(await checkoutRepo(repoConfig));
             task.outputLog();
