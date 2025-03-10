@@ -25,6 +25,20 @@ initWorkflow({
                 hard: true,
                 skip: false,
             },
+            {
+                repo: {
+                    name: '_test_commit_',
+                    url: 'git@github.com:cocos-creator/workflow.git',
+                    local: '_test_commit_',
+
+                    targetType: 'commit',
+                    targetValue: '337b53b508fb23ceeee049444fb5bb22a343bde2',
+                },
+
+                path: './.dist/repository-test-commit',
+                hard: true,
+                skip: false,
+            },
         ],
     },
     cacheFile: join(__dirname, './.dist/cache.json'),
