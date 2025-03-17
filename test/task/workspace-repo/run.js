@@ -11,34 +11,34 @@ initWorkflow({
     entry: '.test.config.js',
     params: {
         repo: [
-            // {
-            //     repo: {
-            //         name: '_test_origin_',
-            //         url: 'https://github.com/cocos-creator/workflow.git',
-            //         local: '_test_branch_',
+            {
+                repo: {
+                    name: '_test_origin_',
+                    url: 'https://github.com/cocos-creator/workflow.git',
+                    local: '_test_branch_',
 
-            //         targetType: 'branch',
-            //         targetValue: 'main',
-            //     },
+                    targetType: 'branch',
+                    targetValue: 'main',
+                },
 
-            //     path: './.dist/repository',
-            //     hard: true,
-            //     skip: false,
-            // },
-            // {
-            //     repo: {
-            //         name: '_test_commit_',
-            //         url: 'git@github.com:cocos-creator/workflow.git',
-            //         local: '_test_commit_',
+                path: './.dist/repository',
+                hard: true,
+                skip: false,
+            },
+            {
+                repo: {
+                    name: '_test_commit_',
+                    url: 'git@github.com:cocos-creator/workflow.git',
+                    local: '_test_commit_',
 
-            //         targetType: 'commit',
-            //         targetValue: '9ad17949a8dbf242b3754d52b6a08292b0789f93',
-            //     },
+                    targetType: 'commit',
+                    targetValue: '9ad17949a8dbf242b3754d52b6a08292b0789f93',
+                },
 
-            //     path: './.dist/repository-test-commit',
-            //     hard: true,
-            //     skip: false,
-            // },
+                path: './.dist/repository-test-commit',
+                hard: true,
+                skip: false,
+            },
             {
                 repo: {
                     name: '_test_pr_',
