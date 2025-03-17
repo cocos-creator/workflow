@@ -60,6 +60,12 @@ export const RepoTaskMethods = {
         });
     },
 
+    async fetchPr(remote: string, path: string, pr: string, local: string) {
+        await bash('git', ['fetch', remote, `pull/${pr}/head:${local}`], {
+            cwd: path,
+        });
+    },
+
     /**
      * Adds a remote repository to the local git repository.
      *
@@ -196,6 +202,25 @@ export class RepoTask extends Task {
                     task.print(err.message);
                     return TaskState.error;
                 }
+            } else if (config.repo.targetType === 'pr') {
+                try {
+                    const {
+                        url, targetValue, local,
+                    } = config.repo;
+                    await RepoTaskMethods.fetchPr(url, path, targetValue, local);
+                    // Get the commit ID of the fetched PR branch
+                    await bash('git', ['rev-parse', local], {
+                        cwd: path,
+                    }, (chunk) => {
+                        const log = `${chunk}`;
+                        remoteID = log.replace(/\n/g, '').trim();
+                    });
+                } catch (error) {
+                    const err = error as Error;
+                    task.print('Failed to fetch remote commit [ git rev-parse pr ]');
+                    task.print(err.message);
+                    return TaskState.error;
+                }
             } else {
                 task.print('Failed to fetch remote commit [ No branch or tag configured ]');
                 return TaskState.error;
@@ -309,7 +334,7 @@ export class RepoTask extends Task {
         }
 
         task.outputLog();
-        let rets: TaskState[] = [];
+        const rets: TaskState[] = [];
         for (const repoConfig of repoConfigArray) {
             rets.push(await checkoutRepo(repoConfig));
             task.outputLog();
