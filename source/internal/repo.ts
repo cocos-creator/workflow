@@ -207,9 +207,10 @@ export class RepoTask extends Task {
                     const {
                         url, targetValue, local,
                     } = config.repo;
-                    await RepoTaskMethods.fetchPr(url, path, targetValue, local);
+                    const prLocal = 'pr_temp_branch';
+                    await RepoTaskMethods.fetchPr(url, path, targetValue, prLocal);
                     // Get the commit ID of the fetched PR branch
-                    await bash('git', ['rev-parse', local], {
+                    await bash('git', ['rev-parse', prLocal], {
                         cwd: path,
                     }, (chunk) => {
                         const log = `${chunk}`;
