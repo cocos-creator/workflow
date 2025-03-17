@@ -189,27 +189,16 @@ export class RepoTask extends Task {
                     return TaskState.error;
                 }
             } else if (config.repo.targetType === 'commit') {
-                try {
-                    await bash('git', ['rev-parse', config.repo.targetValue], {
-                        cwd: path,
-                    }, (chunk) => {
-                        const log = `${chunk}`;
-                        remoteID = log.replace(/\n/g, '').trim();
-                    });
-                } catch (error) {
-                    const err = error as Error;
-                    task.print('Failed to fetch remote commit [ git rev-parse commit ]');
-                    task.print(err.message);
-                    return TaskState.error;
-                }
+                remoteID = config.repo.targetValue;
             } else if (config.repo.targetType === 'pr') {
                 try {
                     const {
-                        url, targetValue, local,
+                        url, targetValue,
                     } = config.repo;
-                    await RepoTaskMethods.fetchPr(url, path, targetValue, local);
+                    const prLocal = 'pr_temp_branch';
+                    await RepoTaskMethods.fetchPr(url, path, targetValue, prLocal);
                     // Get the commit ID of the fetched PR branch
-                    await bash('git', ['rev-parse', local], {
+                    await bash('git', ['rev-parse', prLocal], {
                         cwd: path,
                     }, (chunk) => {
                         const log = `${chunk}`;
