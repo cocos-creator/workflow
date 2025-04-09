@@ -26,6 +26,10 @@ export type NPMConfig = {
     detail: string;
     // 存放日志的路径，当没有设置的时候，会将日志输出到控制台
     logFile?: string,
+
+    env?: {
+        [key: string]: string;
+    },
 }[];
 
 export class NPMTask extends Task {
@@ -72,6 +76,10 @@ export class NPMTask extends Task {
                     cwd: source,
                     // @ts-ignore
                     stdio: writeStream ? undefined : 'inherit',
+                    env: config.env ? {
+                        ...process.env,
+                        ...config.env,
+                    } : process.env,
                 }, (data) => {
                     if (writeStream) {
                         writeStream.write(data.toString());
